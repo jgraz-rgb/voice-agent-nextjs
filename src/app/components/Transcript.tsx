@@ -22,7 +22,6 @@ function Transcript({
   onSendMessage,
   canSend,
   downloadRecording,
-  agentSpeaking
 }: TranscriptProps) {
   const { transcriptItems, toggleTranscriptItemExpand } = useTranscript();
   const transcriptRef = useRef<HTMLDivElement | null>(null);
@@ -71,14 +70,12 @@ function Transcript({
     }
   };
 
-  console.log(agentSpeaking);
 
   return (
     <div className="flex flex-col flex-1 bg-white min-h-0 rounded-xl">
       <div className="flex flex-col flex-1 min-h-0">
         <div className="max-h-[100px] flex justify-center">        
-          <iframe id="sales_demo" src="https://lottie.host/embed/8885617d-f15e-46a9-8cd2-faa62f81402a/rMEAe0RHtC.lottie" title="Sales Demo Animation" style={{display: !agentSpeaking ? "block" : "none"}}></iframe>
-          <iframe id="talking" src="https://lottie.host/embed/916663ea-f844-4597-96fa-e3fcbfdd8df8/ezDltlvThq.lottie" title="Talking Chatbot Animation" style={{display: agentSpeaking ? "block" : "none"}}></iframe>
+          <iframe id="sales_demo" src="https://lottie.host/embed/8885617d-f15e-46a9-8cd2-faa62f81402a/rMEAe0RHtC.lottie" title="Sales Demo Animation" style={{display: "block"}}></iframe>
           </div>
         <div className="flex items-center justify-between px-6 py-3 sticky top-0 z-10 text-base border-b bg-white rounded-t-xl">
           <span className="font-semibold">Conversation</span>

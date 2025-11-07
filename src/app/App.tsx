@@ -45,21 +45,6 @@ import { useHandleSessionHistory } from "./hooks/useHandleSessionHistory";
 function App() {
   const searchParams = useSearchParams()!;
 
-  // ---------------------------------------------------------------------
-  // Codec selector – lets you toggle between wide-band Opus (48 kHz)
-  // and narrow-band PCMU/PCMA (8 kHz) to hear what the agent sounds like on
-  // a traditional phone line and to validate ASR / VAD behaviour under that
-  // constraint.
-  //
-  // We read the `?codec=` query-param and rely on the `changePeerConnection`
-  // hook (configured in `useRealtimeSession`) to set the preferred codec
-  // before the offer/answer negotiation.
-  // ---------------------------------------------------------------------
-  const urlCodec = searchParams.get("codec") || "opus";
-
-  // Agents SDK doesn't currently support codec selection so it is now forced 
-  // via global codecPatch at module load 
-
   const {
     addTranscriptMessage,
     addTranscriptBreadcrumb,
@@ -97,8 +82,7 @@ function App() {
     sendUserText,
     sendEvent,
     interrupt,
-    mute,
-    agentSpeaking
+    mute
   } = useRealtimeSession({
     onConnectionChange: (s) => setSessionStatus(s as SessionStatus),
     onAgentHandoff: (agentName: string) => {
@@ -352,13 +336,6 @@ function App() {
     // connectToRealtime will be triggered by effect watching selectedAgentName
   };
 
-  // Because we need a new connection, refresh the page when codec changes
-  const handleCodecChange = (newCodec: string) => {
-    const url = new URL(window.location.toString());
-    url.searchParams.set("codec", newCodec);
-    window.location.replace(url.toString());
-  };
-
   useEffect(() => {
     const storedPushToTalkUI = localStorage.getItem("pushToTalkUI");
     if (storedPushToTalkUI) {
@@ -538,7 +515,6 @@ function App() {
           canSend={
             sessionStatus === "CONNECTED"
           }
-          agentSpeaking={agentSpeaking}
         />
 
         {/* <Events isExpanded={isEventsPaneExpanded} /> */}
@@ -556,8 +532,6 @@ function App() {
         setIsEventsPaneExpanded={setIsEventsPaneExpanded}
         isAudioPlaybackEnabled={isAudioPlaybackEnabled}
         setIsAudioPlaybackEnabled={setIsAudioPlaybackEnabled}
-        codec={urlCodec}
-        onCodecChange={handleCodecChange}
       />
     </div>
   );

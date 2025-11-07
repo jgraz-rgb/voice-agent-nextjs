@@ -13,8 +13,6 @@ interface BottomToolbarProps {
   setIsEventsPaneExpanded: (val: boolean) => void;
   isAudioPlaybackEnabled: boolean;
   setIsAudioPlaybackEnabled: (val: boolean) => void;
-  codec: string;
-  onCodecChange: (newCodec: string) => void;
 }
 
 function BottomToolbar({
@@ -29,16 +27,9 @@ function BottomToolbar({
   setIsEventsPaneExpanded,
   isAudioPlaybackEnabled,
   setIsAudioPlaybackEnabled,
-  codec,
-  onCodecChange,
 }: BottomToolbarProps) {
   const isConnected = sessionStatus === "CONNECTED";
   const isConnecting = sessionStatus === "CONNECTING";
-
-  const handleCodecChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newCodec = e.target.value;
-    onCodecChange(newCodec);
-  };
 
   function getConnectionButtonLabel() {
     if (isConnected) return "Disconnect";
@@ -131,17 +122,6 @@ function BottomToolbar({
 
       <div className="flex flex-row items-center gap-2">
         <div>Codec:</div>
-     
-        <select
-          id="codec-select"
-          value={codec}
-          onChange={handleCodecChange}
-          className="border border-gray-300 rounded-md px-2 py-1 focus:outline-none cursor-pointer"
-        >
-          <option value="opus">Opus (48 kHz)</option>
-          <option value="pcmu">PCMU (8 kHz)</option>
-          <option value="pcma">PCMA (8 kHz)</option>
-        </select>
       </div> */}
     </div>
   );

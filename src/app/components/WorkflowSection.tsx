@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 
 function WorkflowSection() {
 
@@ -12,10 +13,15 @@ function WorkflowSection() {
         </div>
 
         {/* Transcript Content */}
-        <div
-          className="overflow-auto p-4 flex flex-col gap-y-4 h-full"
-        >
-            <img src="workflow1111.png"></img>
+        <div className="overflow-auto p-4 flex flex-col gap-y-4 h-full">
+          <Image
+            src="/workflow1111.png"
+            alt="Workflow overview for the Searchunify Agentic Suite"
+            width={7080}
+            height={3624}
+            className="h-auto w-full rounded-lg"
+            priority
+          />
         </div>
       </div>
     </div>
