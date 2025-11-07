@@ -7,8 +7,8 @@ WORKDIR /src
 
 # --- Dependencies stage ---
 FROM base AS deps
-COPY package.json ./
-RUN npm install --omit=dev
+COPY package.json package-lock.json ./
+RUN npm ci
 
 # --- Build stage ---
 FROM base AS builder
@@ -16,6 +16,8 @@ ENV NODE_ENV=production
 COPY --from=deps /src/node_modules ./node_modules
 COPY . .
 RUN npm run build
+# Remove devDependencies before copying to the runtime image
+RUN npm prune --omit=dev
 
 # --- Runtime stage ---
 FROM node:20-alpine AS runner
