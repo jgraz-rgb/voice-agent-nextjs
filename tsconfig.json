@@ -34,7 +34,7 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts"
-  ],
+, "src/app/agentConfigs/kotakInsurance/getTools.ts"  ],
   "exclude": [
     "node_modules"
   ]
