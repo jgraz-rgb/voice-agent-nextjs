@@ -121,6 +121,49 @@ class StateManager {
 const stateManager = new StateManager();
 
 // ============================================================================
+// TOOL API CLIENT HELPER
+// ============================================================================
+
+type McpServiceName = "mobile_otp_verification" | "email_tools" | "zendesk";
+
+const mcpServers: Record<McpServiceName, { url: string }> = {
+  mobile_otp_verification: { url: "http://localhost:7290/" },
+  email_tools: { url: "http://localhost:16500/" },
+  zendesk: { url: "http://localhost:5874/" },
+};
+
+export async function callToolAPI(
+  service: McpServiceName,
+  endpoint: string,
+  data: any
+): Promise<any> {
+  try {
+    // ✅ Get base URL dynamically based on the service name
+    const baseUrl = mcpServers[service]?.url;
+    if (!baseUrl) {
+      throw new Error(`Unknown MCP service: ${service}`);
+    }
+
+    // ✅ Perform the API call
+    const response = await fetch(`${baseUrl}${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    // ✅ Return JSON response
+    return await response.json();
+  } catch (error) {
+    console.error(`Tool API call failed for ${service}/${endpoint}:`, error);
+    throw error;
+  }
+}
+
+// ============================================================================
 // TOOLS
 // ============================================================================
 
@@ -237,18 +280,13 @@ const verifyAadhaarOTPTool = tool({
 
 const sendGeneralOTPTool = tool({
   name: 'sendGeneralOTP',
-  description: 'Sends OTP to the registered mobile number for e-verification.',
+  description: 'Sends OTP to the registered mobile number for e-verification.Wait until step 7 to send otp, do not immediately invoke this tool once user submits a phone number',
   parameters: z.object({
-    phone_number: z.string().describe('10-digit mobile number'),
+  mobileNumber: z.string().describe('10-digit mobile number'),
   }),
-  execute: async () => {
-    const otp_reference_id = `GEN_${Date.now()}`;
-
-    return {
-      success: true,
-      otp_reference_id,
-      message: 'OTP sent successfully',
-    };
+  execute: async ({ mobileNumber }: { mobileNumber: string }) => {
+    // Call external tool API
+    return await callToolAPI("mobile_otp_verification",'send_otp', { mobileNumber });
   },
 });
 
@@ -256,24 +294,19 @@ const verifyGeneralOTPTool = tool({
   name: 'verifyGeneralOTP',
   description: 'Verifies the OTP sent for e-verification.',
   parameters: z.object({
-    otp_reference_id: z.string().describe('OTP reference ID from sendGeneralOTP'),
+    mobile_number: z.string().describe('registered mobile number'),
     otp_code: z.string().describe('6-digit OTP code provided by user'),
   }),
-  execute: async ({ otp_code }: { otp_reference_id: string; otp_code: string }) => {
-    const isValid = /^\d{6}$/.test(otp_code);
+  execute: async ({ mobile_number, otp_code }: { mobile_number: string; otp_code: string }) => {
+    // Call external tool API
+    const result = await callToolAPI("mobile_otp_verification",'verify_otp', {mobile_number, otp_code });
 
-    if (isValid) {
+    // Update local state if verification was successful
+    if (result.success) {
       stateManager.updateState({ application_everified: true });
-      return {
-        success: true,
-        message: 'Application e-verified successfully',
-      };
-    } else {
-      return {
-        success: false,
-        message: 'Invalid OTP. Please try again.',
-      };
     }
+
+    return result;
   },
 });
 
@@ -330,12 +363,9 @@ const sendEmailTool = tool({
     subject: z.string().describe('Email subject line'),
     body: z.string().describe('Email body content'),
   }),
-  execute: async () => {
-    return {
-      success: true,
-      email_id: `EMAIL_${Date.now()}`,
-      message: 'Email sent successfully',
-    };
+  execute: async ({ to_address, subject, body }: { to_address: string; subject: string; body: string }) => {
+    // Call external tool API
+    return await callToolAPI("email_tools",'send_email', { to_address, subject, body });
   },
 });
 
@@ -597,115 +627,21 @@ const createZendeskTicketTool = tool({
     application_status: z.enum(['Completed', 'Abandoned', 'In Progress']).describe('Overall application status for the ticket'),
   }),
   execute: async (input) => {
-    const { subject, application_status } = input as {
+    const { subject, transcript, customer_data, application_status } = input as {
       subject: string;
+      transcript: string | null;
+      customer_data: any;
       application_status: 'Completed' | 'Abandoned' | 'In Progress';
     };
-    const snapshot = stateManager.getState();
 
-    // Build a compact ticket payload focused on collected fields (not full transcript)
-    const ticket = {
+    // Call external tool API
+    // Note: Tool API will handle ticket creation and storage
+    return await callToolAPI("zendesk",'createZendeskTicket', {
       subject,
-  application_status,
-      created_at: new Date().toISOString(),
-      customer: {
-        full_name: snapshot.full_name ?? null,
-        gender: snapshot.gender ?? null,
-        mobile_number: snapshot.mobile_number ?? null,
-        email_id: snapshot.email_id ?? null,
-        date_of_birth: snapshot.date_of_birth ?? null,
-        pincode: snapshot.pincode ?? null,
-        city: snapshot.city ?? null,
-        state: snapshot.state ?? null,
-        nationality: snapshot.nationality ?? null,
-      },
-      plan: {
-        monthly_premium: snapshot.monthly_premium ?? null,
-        pay_for_years: snapshot.pay_for_years ?? null,
-        policy_term: snapshot.policy_term ?? null,
-        selected_plan: snapshot.selected_plan ?? null,
-        fund_strategy: snapshot.fund_strategy ?? null,
-        maturity_4_percent: snapshot.maturity_4_percent ?? null,
-        maturity_8_percent: snapshot.maturity_8_percent ?? null,
-      },
-      kyc: {
-        pan_number: snapshot.pan_number ?? null,
-        aadhaar_number: snapshot.aadhaar_number ?? null,
-        aadhaar_address: snapshot.aadhaar_address ?? null,
-        aadhaar_dob: snapshot.aadhaar_dob ?? null,
-        ckyc_consent: snapshot.ckyc_consent ?? null,
-        aadhaar_consent: snapshot.aadhaar_consent ?? null,
-      },
-      background: {
-        marital_status: snapshot.marital_status ?? null,
-        education_level: snapshot.education_level ?? null,
-        occupation: snapshot.occupation ?? null,
-        organization_type: snapshot.organization_type ?? null,
-        organization_name: snapshot.organization_name ?? null,
-        years_in_service: snapshot.years_in_service ?? null,
-        country_of_birth: snapshot.country_of_birth ?? null,
-        place_of_birth: snapshot.place_of_birth ?? null,
-        criminal_history: snapshot.criminal_history ?? null,
-        is_pep: snapshot.is_pep ?? null,
-        is_pep_relative: snapshot.is_pep_relative ?? null,
-        other_country_tax_resident: snapshot.other_country_tax_resident ?? null,
-        has_eia: snapshot.has_eia ?? null,
-      },
-      nominee: {
-        nominee_name: snapshot.nominee_name ?? null,
-        nominee_relationship: snapshot.nominee_relationship ?? null,
-        nominee_dob: snapshot.nominee_dob ?? null,
-        nominee_address: snapshot.nominee_address ?? null,
-      },
-      health: {
-        height_feet: snapshot.height_feet ?? null,
-        height_inches: snapshot.height_inches ?? null,
-        weight_kg: snapshot.weight_kg ?? null,
-        cigarette_consumption: snapshot.cigarette_consumption ?? null,
-        tobacco_consumption: snapshot.tobacco_consumption ?? null,
-        alcohol_consumption: snapshot.alcohol_consumption ?? null,
-        narcotics_consumption: snapshot.narcotics_consumption ?? null,
-        insurance_declined_history: snapshot.insurance_declined_history ?? null,
-        hiv_aids_history: snapshot.hiv_aids_history ?? null,
-        cardiovascular_history: snapshot.cardiovascular_history ?? null,
-        respiratory_digestive_urinary_history: snapshot.respiratory_digestive_urinary_history ?? null,
-        mental_nervous_congenital_history: snapshot.mental_nervous_congenital_history ?? null,
-        recent_medical_attention: snapshot.recent_medical_attention ?? null,
-        family_medical_history: snapshot.family_medical_history ?? null,
-      },
-      bank: {
-        account_type: snapshot.account_type ?? null,
-        account_holder_name: snapshot.account_holder_name ?? null,
-        bank_account_number: snapshot.bank_account_number ?? null,
-        ifsc_code: snapshot.ifsc_code ?? null,
-      },
-      documents: {
-        documents_received: snapshot.documents_received ?? [],
-        all_documents_received: snapshot.all_documents_received ?? false,
-      },
-      policy: {
-        policy_id: snapshot.policy_id ?? null,
-        policy_link: snapshot.policy_link ?? null,
-      },
-      progress: {
-        current_step: snapshot.current_step,
-        final_consents_given: snapshot.final_consents_given ?? null,
-        application_everified: snapshot.application_everified ?? null,
-        payment_completed: snapshot.payment_completed ?? null,
-      },
-      transcript_included: false,
-    };
-
-    try {
-      await fetch('/api/zendesk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(ticket),
-      });
-      return { success: true, message: 'Ticket saved locally' };
-    } catch (err) {
-      return { success: false, message: 'Failed to save ticket', error: String(err) };
-    }
+      transcript,
+      customer_data,
+      application_status,
+    });
   },
 });
 
