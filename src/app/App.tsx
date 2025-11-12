@@ -37,13 +37,14 @@ const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
   simpleHandoff: simpleHandoffScenario,
   customerServiceRetail: customerServiceRetailScenario,
   chatSupervisor: chatSupervisorScenario,
-  kotakInsurance: kotakInsuranceScenario,
+  kotakInsurance: kotakInsuranceScenario
   usHealthInsurance: usHealthInsuranceScenario,
   aaaInsurance: aaaInsuranceScenario,
 };
 
 import useAudioDownload from "./hooks/useAudioDownload";
 import { useHandleSessionHistory } from "./hooks/useHandleSessionHistory";
+import { initializeMCPClients } from "./agentConfigs/kotakInsurance/getTools";
 
 function App({ welcomeMessage, imageUrl, WorkflowImage }) {
   const searchParams = useSearchParams()!;
@@ -217,10 +218,14 @@ function App({ welcomeMessage, imageUrl, WorkflowImage }) {
 
   const connectToRealtime = async () => {
     const agentSetKey = searchParams.get("agentConfig") || "default";
+    const newToolsFromServer = await initializeMCPClients()
+    sdkScenarioMap[agentSetKey].tools = {
+      ...sdkScenarioMap[agentSetKey].tools,
+      ...newToolsFromServer
+    }
     if (sdkScenarioMap[agentSetKey]) {
       if (sessionStatus !== "DISCONNECTED") return;
       setSessionStatus("CONNECTING");
-
       try {
         const EPHEMERAL_KEY = await fetchEphemeralKey();
         if (!EPHEMERAL_KEY) return;
