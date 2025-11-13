@@ -137,6 +137,12 @@ export async function callToolAPI(
   endpoint: string,
   data: any
 ): Promise<any> {
+  console.log(JSON.stringify({
+    service,
+    endpoint,
+    data,
+    mcpServers
+  }))
   try {
     // ✅ Get base URL dynamically based on the service name
     const baseUrl = mcpServers[service]?.url;
@@ -145,9 +151,13 @@ export async function callToolAPI(
     }
 
     // ✅ Perform the API call
+
     const response = await fetch(`${baseUrl}${endpoint}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": true
+      },
       body: JSON.stringify(data),
     });
 
@@ -282,11 +292,11 @@ const sendGeneralOTPTool = tool({
   name: 'sendGeneralOTP',
   description: 'Sends OTP to the registered mobile number for e-verification.Wait until step 7 to send otp, do not immediately invoke this tool once user submits a phone number',
   parameters: z.object({
-  mobileNumber: z.string().describe('10-digit mobile number'),
+    mobileNumber: z.string().describe('10-digit mobile number'),
   }),
   execute: async ({ mobileNumber }: { mobileNumber: string }) => {
     // Call external tool API
-    return await callToolAPI("mobile_otp_verification",'send_otp', { mobileNumber });
+    return await callToolAPI("mobile_otp_verification", 'send_otp', { mobileNumber });
   },
 });
 
@@ -299,7 +309,7 @@ const verifyGeneralOTPTool = tool({
   }),
   execute: async ({ mobile_number, otp_code }: { mobile_number: string; otp_code: string }) => {
     // Call external tool API
-    const result = await callToolAPI("mobile_otp_verification",'verify_otp', {mobile_number, otp_code });
+    const result = await callToolAPI("mobile_otp_verification", 'verify_otp', { mobile_number, otp_code });
 
     // Update local state if verification was successful
     if (result.success) {
@@ -365,7 +375,7 @@ const sendEmailTool = tool({
   }),
   execute: async ({ to_address, subject, body }: { to_address: string; subject: string; body: string }) => {
     // Call external tool API
-    return await callToolAPI("email_tools",'send_email', { to_address, subject, body });
+    return await callToolAPI("email_tools", 'send_email', { to_address, subject, body });
   },
 });
 
@@ -540,8 +550,8 @@ const ragSearchTool = tool({
 
     const articles: any[] = (data && data.articles) || [];
     for (const article of articles) {
-  if (filters && filters.article_id && String(article.article_id) !== String(filters.article_id)) continue;
-  if (filters && filters.category && String(article.category).toLowerCase() !== String(filters.category).toLowerCase()) continue;
+      if (filters && filters.article_id && String(article.article_id) !== String(filters.article_id)) continue;
+      if (filters && filters.category && String(article.category).toLowerCase() !== String(filters.category).toLowerCase()) continue;
 
       const articleText = extractText({ title: article.title, summary: article.summary, category: article.category, subcategories: article.subcategories });
       const aScore = scoreText(articleText);
@@ -558,7 +568,7 @@ const ragSearchTool = tool({
 
       const sections: any[] = article.sections || [];
       for (const section of sections) {
-  if (filters && filters.section_id && String(section.section_id) !== String(filters.section_id)) continue;
+        if (filters && filters.section_id && String(section.section_id) !== String(filters.section_id)) continue;
         const sectionText = extractText({ title: section.title, content: section.content, keywords: section.keywords, data: section });
         const sScore = scoreText(sectionText);
         if (sScore > 0) {
@@ -636,7 +646,7 @@ const createZendeskTicketTool = tool({
 
     // Call external tool API
     // Note: Tool API will handle ticket creation and storage
-    return await callToolAPI("zendesk",'createZendeskTicket', {
+    return await callToolAPI("zendesk", 'createZendeskTicket', {
       subject,
       transcript,
       customer_data,

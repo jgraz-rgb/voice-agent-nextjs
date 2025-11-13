@@ -165,50 +165,43 @@ function Transcript({
                   </div>
                 </div>
               );
-            } else if (type === "BREADCRUMB") {
-              return (
-                <div
-                  key={itemId}
-                  className="flex flex-col justify-start items-start text-gray-500 text-sm"
-                >
-                  <span className="text-xs font-mono">{timestamp}</span>
-                  <div
-                    className={`whitespace-pre-wrap flex items-center font-mono text-sm text-gray-800 ${
-                      data ? "cursor-pointer" : ""
-                    }`}
-                    onClick={() => data && toggleTranscriptItemExpand(itemId)}
-                  >
-                    {data && (
-                      <span
-                        className={`text-gray-400 mr-1 transform transition-transform duration-200 select-none font-mono ${
-                          expanded ? "rotate-90" : "rotate-0"
-                        }`}
-                      >
-                        ▶
-                      </span>
-                    )}
-                    {title}
-                  </div>
-                  {expanded && data && (
-                    <div className="text-gray-800 text-left">
-                      <pre className="border-l-2 ml-1 border-gray-200 whitespace-pre-wrap break-words font-mono text-xs mb-2 mt-2 pl-2">
-                        {JSON.stringify(data, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                </div>
-              );
-            } else {
+            }
+            // } else if (type === "BREADCRUMB") {
+            //   return (
+            //     <div
+            //       key={itemId}
+            //       className="flex flex-col justify-start items-start text-gray-500 text-sm"
+            //     >
+            //       <span className="text-xs font-mono">{timestamp}</span>
+            //       <div
+            //         className={`whitespace-pre-wrap flex items-center font-mono text-sm text-gray-800 ${
+            //           data ? "cursor-pointer" : ""
+            //         }`}
+            //         onClick={() => data && toggleTranscriptItemExpand(itemId)}
+            //       >
+            //         {data && (
+            //           <span
+            //             className={`text-gray-400 mr-1 transform transition-transform duration-200 select-none font-mono ${
+            //               expanded ? "rotate-90" : "rotate-0"
+            //             }`}
+            //           >
+            //             ▶
+            //           </span>
+            //         )}
+            //         {title}
+            //       </div>
+            //       {expanded && data && (
+            //         <div className="text-gray-800 text-left">
+            //           <pre className="border-l-2 ml-1 border-gray-200 whitespace-pre-wrap break-words font-mono text-xs mb-2 mt-2 pl-2">
+            //             {JSON.stringify(data, null, 2)}
+            //           </pre>
+            //         </div>
+            //       )}
+            //     </div>
+            //   );
+            else {
               // Fallback if type is neither MESSAGE nor BREADCRUMB
-              return (
-                <div
-                  key={itemId}
-                  className="flex justify-center text-gray-500 text-sm italic font-mono"
-                >
-                  Unknown item type: {type}{" "}
-                  <span className="ml-2 text-xs">{timestamp}</span>
-                </div>
-              );
+              return null
             }
           })}
         </div>

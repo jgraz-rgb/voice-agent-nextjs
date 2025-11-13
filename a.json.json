@@ -1,0 +1,18 @@
+{
+    "service": "mobile_otp_verification",
+    "endpoint": "send_otp",
+    "data": {
+        "mobileNumber": "7837982793"
+    },
+    "mcpServers": {
+        "mobile_otp_verification": {
+            "url": "http://localhost:7290/"
+        },
+        "email_tools": {
+            "url": "http://localhost:16500/"
+        },
+        "zendesk": {
+            "url": "http://localhost:5874/"
+        }
+    }
+}
