@@ -127,9 +127,9 @@ const stateManager = new StateManager();
 type McpServiceName = "mobile_otp_verification" | "email_tools" | "zendesk";
 
 const mcpServers: Record<McpServiceName, { url: string }> = {
-  mobile_otp_verification: { url: "http://localhost:7290/" },
-  email_tools: { url: "http://localhost:16500/" },
-  zendesk: { url: "http://localhost:5874/" },
+  mobile_otp_verification: { url: "http://MOBILE_Authentication_api:7290/" },
+  email_tools: { url: "http://email_sender_api:16500/" },
+  zendesk: { url: "http://zendesk_api:5874/" },
 };
 
 export async function callToolAPI(
@@ -137,27 +137,14 @@ export async function callToolAPI(
   endpoint: string,
   data: any
 ): Promise<any> {
-  console.log(JSON.stringify({
-    service,
-    endpoint,
-    data,
-    mcpServers
-  }))
   try {
     // ✅ Get base URL dynamically based on the service name
-    const baseUrl = mcpServers[service]?.url;
-    if (!baseUrl) {
-      throw new Error(`Unknown MCP service: ${service}`);
-    }
+    const baseUrl = "https://feature-mltools.searchunify.com/bfsi-api/";
 
     // ✅ Perform the API call
-
     const response = await fetch(`${baseUrl}${endpoint}`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": true
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
 
@@ -292,11 +279,11 @@ const sendGeneralOTPTool = tool({
   name: 'sendGeneralOTP',
   description: 'Sends OTP to the registered mobile number for e-verification.Wait until step 7 to send otp, do not immediately invoke this tool once user submits a phone number',
   parameters: z.object({
-    mobileNumber: z.string().describe('10-digit mobile number'),
+  mobileNumber: z.string().describe('10-digit mobile number'),
   }),
   execute: async ({ mobileNumber }: { mobileNumber: string }) => {
     // Call external tool API
-    return await callToolAPI("mobile_otp_verification", 'send_otp', { mobileNumber });
+    return await callToolAPI("mobile_otp_verification",'send_otp', { mobileNumber });
   },
 });
 
@@ -309,7 +296,7 @@ const verifyGeneralOTPTool = tool({
   }),
   execute: async ({ mobile_number, otp_code }: { mobile_number: string; otp_code: string }) => {
     // Call external tool API
-    const result = await callToolAPI("mobile_otp_verification", 'verify_otp', { mobile_number, otp_code });
+    const result = await callToolAPI("mobile_otp_verification",'verify_otp', {mobile_number, otp_code });
 
     // Update local state if verification was successful
     if (result.success) {
@@ -369,13 +356,13 @@ const sendEmailTool = tool({
   name: 'sendEmail',
   description: 'Sends an email to the user (payment link or policy documents).',
   parameters: z.object({
-    to_address: z.string().describe('Email address'),
+    to_email: z.string().describe('Email address'),
     subject: z.string().describe('Email subject line'),
     body: z.string().describe('Email body content'),
   }),
-  execute: async ({ to_address, subject, body }: { to_address: string; subject: string; body: string }) => {
+  execute: async ({ to_email, subject, body }: { to_email: string; subject: string; body: string }) => {
     // Call external tool API
-    return await callToolAPI("email_tools", 'send_email', { to_address, subject, body });
+    return await callToolAPI("email_tools",'send_email', { to_email, subject, body });
   },
 });
 
@@ -550,8 +537,8 @@ const ragSearchTool = tool({
 
     const articles: any[] = (data && data.articles) || [];
     for (const article of articles) {
-      if (filters && filters.article_id && String(article.article_id) !== String(filters.article_id)) continue;
-      if (filters && filters.category && String(article.category).toLowerCase() !== String(filters.category).toLowerCase()) continue;
+  if (filters && filters.article_id && String(article.article_id) !== String(filters.article_id)) continue;
+  if (filters && filters.category && String(article.category).toLowerCase() !== String(filters.category).toLowerCase()) continue;
 
       const articleText = extractText({ title: article.title, summary: article.summary, category: article.category, subcategories: article.subcategories });
       const aScore = scoreText(articleText);
@@ -568,7 +555,7 @@ const ragSearchTool = tool({
 
       const sections: any[] = article.sections || [];
       for (const section of sections) {
-        if (filters && filters.section_id && String(section.section_id) !== String(filters.section_id)) continue;
+  if (filters && filters.section_id && String(section.section_id) !== String(filters.section_id)) continue;
         const sectionText = extractText({ title: section.title, content: section.content, keywords: section.keywords, data: section });
         const sScore = scoreText(sectionText);
         if (sScore > 0) {
@@ -626,6 +613,7 @@ const ragSearchTool = tool({
 // ZENDESK TICKET (LOCAL JSON SIMULATION)
 // ----------------------------------------------------------------------------
 
+/*
 const createZendeskTicketTool = tool({
   name: 'createZendeskTicket',
   description: 'Creates a simulated Zendesk ticket by saving current application snapshot to a local JSON file via API. Call at completion or when abandoned.',
@@ -646,7 +634,7 @@ const createZendeskTicketTool = tool({
 
     // Call external tool API
     // Note: Tool API will handle ticket creation and storage
-    return await callToolAPI("zendesk", 'createZendeskTicket', {
+    return await callToolAPI("zendesk",'createZendeskTicket', {
       subject,
       transcript,
       customer_data,
@@ -654,6 +642,57 @@ const createZendeskTicketTool = tool({
     });
   },
 });
+
+*/
+
+const createZendeskTicketTool = tool({
+  name: "createZendeskTicket",
+  description:
+    "Creates a simulated Zendesk ticket by saving current application snapshot to a local JSON file via API. Call at completion or when abandoned.",
+  strict: true,
+  parameters: z.object({
+    subject: z
+      .string()
+      .describe("Ticket subject line including customer name and status"),
+    transcript: z
+      .string()
+      .nullable()
+      .describe("Optional conversation transcript or context"),
+    customer_data: z
+      .any()
+      .nullable()
+      .describe("Additional customer details or metadata"),
+    application_status: z
+      .enum(["Completed", "Abandoned", "In Progress"])
+      .describe("Overall application status for the ticket"),
+  }),
+  execute: async (input) => {
+    const { subject, transcript, customer_data, application_status } = input;
+
+    // ✅ Combine into a single description string
+    const descriptionParts: string[] = [];
+
+    descriptionParts.push(`**Application Status:** ${application_status}`);
+
+    if (transcript) {
+      descriptionParts.push(`**Transcript:**\n${transcript}`);
+    }
+
+    if (customer_data) {
+      descriptionParts.push(
+        `**Customer Data:**\n${JSON.stringify(customer_data, null, 2)}`
+      );
+    }
+
+    const description = descriptionParts.join("\n\n");
+    // ✅ Call external tool API (with description only)
+    return await callToolAPI("zendesk", "tickets", {
+      subject,
+      description,
+
+    });
+  },
+  });
 
 // ============================================================================
 // CREATE AGENT (Instructions imported from instructions.ts)
