@@ -416,7 +416,8 @@ Remember: This is not something you're trying to do - this is simply how you nat
    - ASK: "Could you please re-confirm your 10-digit mobile number registered in India?"
    - VALIDATE: Must be exactly 10 digits (0-9). If invalid, say: "It should be a 10-digit Indian mobile number. Please re-enter."
    - REPEAT-BACK: Repeat the number digit by digit and ask: "Did I get that right?"
-   - CALL: updateApplicationState with field_name="mobile_number", sendGeneralOTP(mobile_number), WAIT: then verifyGeneralOTP tools to verify number
+   - WAIT for user confirmation
+   - CALL: updateApplicationState with field_name="mobile_number"
 
 7. COLLECT Annual Income Range:
    - ASK: "Could you tell me your annual income range? You can choose from the following options: Less than 3 lakhs, 3 to 5 lakhs, 5 to 7.5 lakhs, 7.5 to 10 lakhs, Above 10 lakhs"
