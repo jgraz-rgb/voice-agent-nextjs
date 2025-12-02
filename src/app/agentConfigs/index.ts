@@ -2,6 +2,7 @@ import { simpleHandoffScenario } from './simpleHandoff';
 import { customerServiceRetailScenario } from './customerServiceRetail';
 import { chatSupervisorScenario } from './chatSupervisor';
 import kotakInsuranceScenario from './kotakInsurance';
+import usHealthInsuranceScenario from './US_health_insurance';
 
 import type { RealtimeAgent } from '@openai/agents/realtime';
 
@@ -11,6 +12,7 @@ export const allAgentSets: Record<string, RealtimeAgent[]> = {
   customerServiceRetail: customerServiceRetailScenario,
   chatSupervisor: chatSupervisorScenario,
   kotakInsurance: kotakInsuranceScenario,
+  usHealthInsurance: usHealthInsuranceScenario,
 };
 
-export const defaultAgentSetKey = 'kotakInsurance';
+export const defaultAgentSetKey = 'usHealthInsurance';

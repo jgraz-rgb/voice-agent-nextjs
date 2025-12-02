@@ -1,0 +1,607 @@
+{
+  "metadata": {
+    "source": "HumanaChoice Medicare Advantage",
+    "domain": "US Health Insurance",
+    "product_categories": ["Medicare Advantage", "PPO"],
+    "carrier": "Humana",
+    "plan_name": "HumanaChoice H5216-347 PPO",
+    "effective_year": "2025",
+    "last_updated": "2025-11-28",
+    "version": "1.0"
+  },
+  "articles": [
+    {
+      "article_id": "1",
+      "title": "HumanaChoice H5216-347 PPO - Plan Overview",
+      "category": "Plan Information",
+      "subcategories": ["Medicare Advantage", "PPO", "Network Coverage"],
+      "summary": "HumanaChoice H5216-347 PPO is a Medicare Advantage Preferred Provider Organization plan offering nationwide coverage with no referral requirements for specialists. Members benefit from significantly lower costs when using in-network providers.",
+      "sections": [
+        {
+          "section_id": "1.1",
+          "title": "Plan Overview",
+          "content": "HumanaChoice H5216-347 PPO is a Medicare Advantage Preferred Provider Organization plan offering nationwide coverage. Members may see any Medicare-approved provider. Using Humana's in-network providers results in significantly lower copays and coinsurance. No referral is required for specialists.",
+          "keywords": ["PPO", "Medicare Advantage", "nationwide coverage", "no referral", "in-network", "out-of-network"]
+        },
+        {
+          "section_id": "1.2",
+          "title": "Plan Type and Network",
+          "content": "This is a Preferred Provider Organization (PPO) plan which means you have flexibility to see any Medicare-approved provider nationwide. You'll save money by using Humana's in-network providers. You don't need referrals to see specialists.",
+          "keywords": ["PPO", "provider network", "flexibility", "Medicare-approved", "specialists"]
+        }
+      ]
+    },
+    {
+      "article_id": "2",
+      "title": "Cost Structure and Deductibles",
+      "category": "Costs",
+      "subcategories": ["Deductible", "Out-of-Pocket Maximum", "Cost Sharing"],
+      "summary": "Detailed breakdown of annual deductibles, out-of-pocket maximums, and cost-sharing structure for in-network and out-of-network services.",
+      "sections": [
+        {
+          "section_id": "2.1",
+          "title": "Annual Deductible",
+          "content": "The annual deductible is the amount you pay for covered healthcare services before your insurance plan starts to pay. In-network deductible is $325. Out-of-network deductible is $850.",
+          "cost_details": {
+            "in_network": "$325",
+            "out_of_network": "$850"
+          },
+          "keywords": ["deductible", "annual deductible", "cost sharing", "in-network", "out-of-network"]
+        },
+        {
+          "section_id": "2.2",
+          "title": "Annual Out-of-Pocket Maximum",
+          "content": "The out-of-pocket maximum is the most you'll pay for covered services in a year. Once you reach this amount, your insurance pays 100% of covered services. In-network maximum is $4,500. Combined in-network and out-of-network maximum is $8,000.",
+          "cost_details": {
+            "in_network": "$4,500",
+            "out_of_network_combined": "$8,000"
+          },
+          "keywords": ["out-of-pocket maximum", "maximum out-of-pocket", "cost protection", "coverage limit"]
+        }
+      ]
+    },
+    {
+      "article_id": "3",
+      "title": "Medical Services Coverage",
+      "category": "Medical Services",
+      "subcategories": ["Doctor Visits", "Specialists", "Urgent Care", "Emergency Care", "Hospital Care"],
+      "summary": "Comprehensive coverage details for medical services including primary care, specialist visits, urgent care, emergency room, and hospital stays.",
+      "sections": [
+        {
+          "section_id": "3.1",
+          "title": "Primary Care Visits",
+          "content": "Primary care visits include appointments with your primary care physician for routine checkups, preventive care, and treatment of common illnesses.",
+          "cost_details": {
+            "in_network": "$0 to $10 copay",
+            "out_of_network": "30% coinsurance"
+          },
+          "keywords": ["primary care", "doctor visit", "PCP", "copay", "coinsurance"]
+        },
+        {
+          "section_id": "3.2",
+          "title": "Specialist Visits",
+          "content": "Specialist visits are appointments with doctors who specialize in specific areas of medicine. No referral is required to see a specialist with this PPO plan.",
+          "cost_details": {
+            "in_network": "$35 copay",
+            "out_of_network": "40% coinsurance"
+          },
+          "keywords": ["specialist", "specialist visit", "no referral", "copay", "coinsurance"]
+        },
+        {
+          "section_id": "3.3",
+          "title": "Urgent Care",
+          "content": "Urgent care facilities provide treatment for non-life-threatening medical conditions that require immediate attention but are not severe enough for the emergency room.",
+          "cost_details": {
+            "in_network": "$40 copay",
+            "out_of_network": "$60 copay"
+          },
+          "keywords": ["urgent care", "immediate care", "copay"]
+        },
+        {
+          "section_id": "3.4",
+          "title": "Emergency Room",
+          "content": "Emergency room services are for life-threatening or severe medical conditions requiring immediate medical attention. The copay is the same whether you go to an in-network or out-of-network emergency room. The copay is waived if you are admitted to the hospital.",
+          "cost_details": {
+            "copay": "$120",
+            "note": "Same for in-network and out-of-network",
+            "waiver": "Copay waived if admitted"
+          },
+          "keywords": ["emergency room", "ER", "emergency care", "copay waived", "hospital admission"]
+        },
+        {
+          "section_id": "3.5",
+          "title": "Inpatient Hospital Stay",
+          "content": "Inpatient hospital stays are when you are formally admitted to a hospital for medical treatment or surgery that requires an overnight stay.",
+          "cost_details": {
+            "in_network": {
+              "days_1_to_5": "$295 per day",
+              "days_6_and_beyond": "$0"
+            },
+            "out_of_network": "50% coinsurance"
+          },
+          "keywords": ["inpatient", "hospital stay", "admission", "per day cost", "coinsurance"]
+        },
+        {
+          "section_id": "3.6",
+          "title": "Outpatient Surgery",
+          "content": "Outpatient surgery includes surgical procedures that don't require an overnight hospital stay. You can go home the same day after the procedure.",
+          "cost_details": {
+            "in_network": "$250 copay",
+            "out_of_network": "50% coinsurance"
+          },
+          "keywords": ["outpatient surgery", "same-day surgery", "surgical procedures", "copay", "coinsurance"]
+        }
+      ]
+    },
+    {
+      "article_id": "4",
+      "title": "Diagnostic Services and Imaging",
+      "category": "Diagnostic Services",
+      "subcategories": ["Labs", "Imaging", "Diagnostic Tests"],
+      "summary": "Coverage information for diagnostic laboratory tests and imaging services including MRI, CT scans, and PET scans.",
+      "sections": [
+        {
+          "section_id": "4.1",
+          "title": "Diagnostic Labs",
+          "content": "Diagnostic laboratory tests include blood work, urinalysis, and other lab tests ordered by your doctor to diagnose or monitor health conditions.",
+          "cost_details": {
+            "in_network": "$0 copay",
+            "out_of_network": "40% coinsurance"
+          },
+          "keywords": ["diagnostic labs", "lab tests", "blood work", "laboratory", "free labs"]
+        },
+        {
+          "section_id": "4.2",
+          "title": "Imaging Services",
+          "content": "Imaging services include advanced diagnostic imaging such as MRI (Magnetic Resonance Imaging), CT (Computed Tomography) scans, and PET (Positron Emission Tomography) scans.",
+          "cost_details": {
+            "in_network": "$175 copay",
+            "out_of_network": "50% coinsurance"
+          },
+          "keywords": ["imaging", "MRI", "CT scan", "PET scan", "diagnostic imaging", "radiology"]
+        }
+      ]
+    },
+    {
+      "article_id": "5",
+      "title": "Telehealth and Virtual Care",
+      "category": "Telehealth",
+      "subcategories": ["Virtual Visits", "Remote Care"],
+      "summary": "Information about telehealth services allowing virtual visits with primary care physicians and specialists.",
+      "sections": [
+        {
+          "section_id": "5.1",
+          "title": "Telehealth Services",
+          "content": "Telehealth allows you to have virtual appointments with healthcare providers using video or phone. This is convenient for non-emergency medical issues and follow-up visits.",
+          "cost_details": {
+            "in_network_primary_care": "$0 copay",
+            "in_network_specialists": "$20 copay",
+            "out_of_network": "Not covered"
+          },
+          "keywords": ["telehealth", "telemedicine", "virtual visit", "video visit", "remote care", "online doctor"]
+        }
+      ]
+    },
+    {
+      "article_id": "6",
+      "title": "Ambulance Services",
+      "category": "Emergency Transportation",
+      "subcategories": ["Ambulance", "Emergency Transport"],
+      "summary": "Coverage for emergency ambulance services for both in-network and out-of-network providers.",
+      "sections": [
+        {
+          "section_id": "6.1",
+          "title": "Ambulance Services",
+          "content": "Ambulance services include emergency medical transportation by ground or air ambulance when medically necessary.",
+          "cost_details": {
+            "copay": "$250",
+            "note": "Same cost for both in-network and out-of-network"
+          },
+          "keywords": ["ambulance", "emergency transport", "medical transport", "emergency services"]
+        }
+      ]
+    },
+    {
+      "article_id": "7",
+      "title": "Prescription Drug Coverage (Part D)",
+      "category": "Prescription Drugs",
+      "subcategories": ["Drug Coverage", "Pharmacy", "Medications"],
+      "summary": "Comprehensive prescription drug coverage with a three-tier formulary covering preferred generics, non-preferred generics, preferred brand drugs, and specialty medications.",
+      "sections": [
+        {
+          "section_id": "7.1",
+          "title": "Prescription Drug Overview",
+          "content": "The plan uses a three-tier formulary for prescription drug coverage. Different tiers have different copays. You can get prescriptions at retail pharmacies for 30-day supplies or use mail-order for 90-day supplies at lower costs.",
+          "keywords": ["prescription drugs", "Part D", "formulary", "pharmacy", "medications"]
+        },
+        {
+          "section_id": "7.2",
+          "title": "Tier 1 - Preferred Generics",
+          "content": "Tier 1 includes preferred generic medications which are the most affordable option. These are generic drugs that are on Humana's preferred list.",
+          "cost_details": {
+            "retail_30_day": "$0 copay",
+            "mail_order_90_day": "$0 copay"
+          },
+          "keywords": ["Tier 1", "preferred generics", "generic drugs", "free prescriptions", "no copay"]
+        },
+        {
+          "section_id": "7.3",
+          "title": "Tier 2 - Non-Preferred Generics",
+          "content": "Tier 2 includes non-preferred generic medications. These are still generic drugs but not on Humana's preferred list, so they cost slightly more than Tier 1.",
+          "cost_details": {
+            "retail_30_day": "$10 copay",
+            "mail_order_90_day": "$25 copay"
+          },
+          "keywords": ["Tier 2", "non-preferred generics", "generic drugs"]
+        },
+        {
+          "section_id": "7.4",
+          "title": "Tier 3 - Preferred Brand Drugs",
+          "content": "Tier 3 includes preferred brand-name medications. These are brand-name drugs that are on Humana's preferred list.",
+          "cost_details": {
+            "retail_30_day": "$42 copay",
+            "mail_order_90_day": "$100 copay"
+          },
+          "keywords": ["Tier 3", "preferred brand", "brand name drugs", "brand medications"]
+        },
+        {
+          "section_id": "7.5",
+          "title": "Tier 4 - Specialty Drugs",
+          "content": "Tier 4 includes specialty medications which are high-cost drugs that treat complex conditions. These must be filled through a specialty pharmacy and are limited to 30-day supplies.",
+          "cost_details": {
+            "coinsurance": "25%",
+            "requirement": "Must be filled through specialty pharmacy",
+            "supply_limit": "Maximum 30-day supply"
+          },
+          "keywords": ["Tier 4", "specialty drugs", "specialty pharmacy", "high-cost medications", "coinsurance"]
+        },
+        {
+          "section_id": "7.6",
+          "title": "Specialty Medication Rules",
+          "content": "Specialty medications have special requirements. Prior authorization is required for all specialty drugs. Any specialty drug costing more than $2,000 requires enrollment in Humana's specialty case-management program.",
+          "requirements": {
+            "prior_authorization": "Required for all specialty drugs",
+            "case_management": "Required for drugs costing over $2,000"
+          },
+          "keywords": ["specialty medications", "prior authorization", "case management", "specialty rules"]
+        }
+      ]
+    },
+    {
+      "article_id": "8",
+      "title": "Preventive Care",
+      "category": "Preventive Services",
+      "subcategories": ["Wellness", "Screenings", "Vaccinations"],
+      "summary": "Comprehensive preventive care services covered at 100% in-network with no deductible, copay, or coinsurance including annual physicals, screenings, and vaccinations.",
+      "sections": [
+        {
+          "section_id": "8.1",
+          "title": "Preventive Care Overview",
+          "content": "The plan covers preventive services at 100% in-network with no deductible, no copay, and no coinsurance. Out-of-network preventive care typically requires 40% coinsurance.",
+          "cost_details": {
+            "in_network": "100% covered, $0 copay, no deductible",
+            "out_of_network": "40% coinsurance"
+          },
+          "keywords": ["preventive care", "wellness", "free preventive", "100% covered"]
+        },
+        {
+          "section_id": "8.2",
+          "title": "Covered Preventive Services",
+          "content": "Preventive services include annual physical examinations, mammograms, pap smears, colonoscopy once every 10 years, flu vaccines, COVID-19 vaccines, Hepatitis B vaccinations, diabetes screenings, and cardiovascular risk assessments.",
+          "services": [
+            "Annual physical examination",
+            "Mammograms",
+            "Pap smears",
+            "Colonoscopy (once every 10 years)",
+            "Flu vaccines",
+            "COVID-19 vaccines",
+            "Hepatitis B vaccinations",
+            "Diabetes screenings",
+            "Cardiovascular risk assessments"
+          ],
+          "keywords": ["annual physical", "mammogram", "pap smear", "colonoscopy", "vaccines", "screenings", "preventive services"]
+        }
+      ]
+    },
+    {
+      "article_id": "9",
+      "title": "Mental Health and Substance Use Coverage",
+      "category": "Mental Health",
+      "subcategories": ["Therapy", "Psychiatry", "Substance Use", "Behavioral Health"],
+      "summary": "Coverage for mental health services including outpatient therapy, psychiatrist visits, inpatient mental health treatment, and substance use disorder treatment.",
+      "sections": [
+        {
+          "section_id": "9.1",
+          "title": "Outpatient Mental Health Therapy",
+          "content": "Outpatient mental health therapy includes visits with therapists, counselors, psychologists, or social workers for mental health treatment.",
+          "cost_details": {
+            "in_network": "$20 copay",
+            "out_of_network": "40% coinsurance"
+          },
+          "keywords": ["mental health", "therapy", "counseling", "outpatient", "psychologist", "therapist"]
+        },
+        {
+          "section_id": "9.2",
+          "title": "Psychiatrist Visits",
+          "content": "Psychiatrist visits include appointments with medical doctors who specialize in mental health and can prescribe medications.",
+          "cost_details": {
+            "in_network": "$35 copay",
+            "out_of_network": "40% coinsurance"
+          },
+          "keywords": ["psychiatrist", "mental health doctor", "psychiatric care", "medication management"]
+        },
+        {
+          "section_id": "9.3",
+          "title": "Inpatient Mental Health",
+          "content": "Inpatient mental health treatment includes hospitalization for mental health conditions requiring intensive treatment and 24-hour care.",
+          "cost_details": {
+            "in_network": {
+              "days_1_to_5": "$295 per day",
+              "days_6_and_beyond": "$0"
+            },
+            "out_of_network": "50% coinsurance"
+          },
+          "keywords": ["inpatient mental health", "psychiatric hospital", "mental health hospitalization"]
+        },
+        {
+          "section_id": "9.4",
+          "title": "Substance Use Disorder Treatment",
+          "content": "Substance use disorder treatment includes services for alcohol and drug addiction including outpatient counseling and inpatient rehabilitation programs.",
+          "cost_details": {
+            "outpatient": "$35 copay",
+            "inpatient": "Same structure as mental health inpatient (Days 1-5: $295/day, Days 6+: $0)",
+            "out_of_network": "50% coinsurance"
+          },
+          "keywords": ["substance use", "addiction treatment", "drug treatment", "alcohol treatment", "rehabilitation"]
+        }
+      ]
+    },
+    {
+      "article_id": "10",
+      "title": "Additional Benefits",
+      "category": "Extra Benefits",
+      "subcategories": ["Vision", "Dental", "Hearing", "Fitness"],
+      "summary": "Additional benefits beyond medical coverage including vision care, dental services, hearing aids, and fitness programs.",
+      "sections": [
+        {
+          "section_id": "10.1",
+          "title": "Vision Benefit",
+          "content": "Vision benefits include routine eye exams and an allowance for glasses or contact lenses each year.",
+          "cost_details": {
+            "eye_exam": {
+              "in_network": "$0 copay",
+              "out_of_network": "40% coinsurance"
+            },
+            "glasses_or_contacts": "$200 per year allowance"
+          },
+          "keywords": ["vision", "eye exam", "glasses", "contacts", "eyewear", "vision care"]
+        },
+        {
+          "section_id": "10.2",
+          "title": "Dental Benefit",
+          "content": "Dental benefits include preventive services like cleanings and exams at no cost, basic restorative dental with cost-sharing, but major procedures are not covered.",
+          "cost_details": {
+            "cleanings_exams_xrays": "$0 copay",
+            "basic_restorative": "30% coinsurance (e.g., fillings)",
+            "major_procedures": "Not covered (e.g., crowns, dentures)"
+          },
+          "keywords": ["dental", "teeth cleaning", "dental exam", "fillings", "dental care"]
+        },
+        {
+          "section_id": "10.3",
+          "title": "Hearing Benefit",
+          "content": "Hearing benefits include routine hearing exams at no cost and discounted hearing aids through the Humana TruHearing program.",
+          "cost_details": {
+            "hearing_exam": "$0 copay",
+            "hearing_aids": "$699 to $999 per device (TruHearing program)"
+          },
+          "keywords": ["hearing", "hearing exam", "hearing aids", "TruHearing", "hearing care"]
+        },
+        {
+          "section_id": "10.4",
+          "title": "Fitness Benefit",
+          "content": "Fitness benefit includes the SilverSneakers program at no extra cost, providing access to fitness centers and exercise classes.",
+          "cost_details": {
+            "silversneakers": "Included at no extra cost"
+          },
+          "keywords": ["fitness", "SilverSneakers", "gym", "exercise", "wellness program"]
+        }
+      ]
+    },
+    {
+      "article_id": "11",
+      "title": "Prior Authorization Requirements",
+      "category": "Administrative",
+      "subcategories": ["Authorization", "Approval", "Requirements"],
+      "summary": "Services and procedures that require prior authorization from Humana before receiving care to ensure coverage.",
+      "sections": [
+        {
+          "section_id": "11.1",
+          "title": "Prior Authorization Overview",
+          "content": "Certain services require prior authorization from Humana before you receive care. Failure to obtain authorization may cause claim denials, meaning you could be responsible for the full cost of the service.",
+          "keywords": ["prior authorization", "pre-authorization", "approval required", "claim denial"]
+        },
+        {
+          "section_id": "11.2",
+          "title": "Services Requiring Prior Authorization",
+          "content": "The following services require prior authorization: MRI, CT, and PET imaging; any inpatient hospital admission; outpatient surgeries that cost more than $2,000; home health care services; durable medical equipment (DME) costing more than $500; all specialty prescriptions; skilled nursing facility admissions; and hospice services (notification only).",
+          "services_requiring_authorization": [
+            "MRI, CT, and PET imaging",
+            "Any inpatient hospital admission",
+            "Outpatient surgeries costing more than $2,000",
+            "Home health care services",
+            "Durable Medical Equipment (DME) costing more than $500",
+            "All specialty prescriptions",
+            "Skilled Nursing Facility admissions",
+            "Hospice services (notification only)"
+          ],
+          "keywords": ["prior authorization", "imaging authorization", "hospital authorization", "DME", "specialty drugs", "skilled nursing"]
+        }
+      ]
+    },
+    {
+      "article_id": "12",
+      "title": "Exclusions and Non-Covered Services",
+      "category": "Exclusions",
+      "subcategories": ["Not Covered", "Limitations"],
+      "summary": "Services and treatments that are not covered by the HumanaChoice H5216-347 PPO plan.",
+      "sections": [
+        {
+          "section_id": "12.1",
+          "title": "Non-Covered Services",
+          "content": "HumanaChoice H5216-347 PPO does not cover the following services: cosmetic surgery unless medically necessary; long-term custodial care; routine foot care (not related to diabetes); experimental or investigational treatments; non-emergency services outside the U.S.; elective dental procedures such as implants or orthodontics; personal convenience items in hospital rooms; and acupuncture (unless for chronic low back pain as defined by Medicare guidelines).",
+          "non_covered_services": [
+            "Cosmetic surgery (unless medically necessary)",
+            "Long-term custodial care",
+            "Routine foot care (not related to diabetes)",
+            "Experimental or investigational treatments",
+            "Non-emergency services outside the U.S.",
+            "Elective dental procedures (implants, orthodontics)",
+            "Personal convenience items in hospital rooms",
+            "Acupuncture (except for chronic low back pain per Medicare guidelines)"
+          ],
+          "keywords": ["exclusions", "not covered", "limitations", "cosmetic surgery", "experimental treatment"]
+        }
+      ]
+    }
+  ],
+  "common_queries": [
+    {
+      "query": "What is the deductible for this plan?",
+      "answer": "The annual deductible is $325 for in-network services and $850 for out-of-network services.",
+      "related_sections": ["2.1"]
+    },
+    {
+      "query": "What is the out-of-pocket maximum?",
+      "answer": "The out-of-pocket maximum is $4,500 for in-network services. The combined in-network and out-of-network maximum is $8,000.",
+      "related_sections": ["2.2"]
+    },
+    {
+      "query": "Do I need a referral to see a specialist?",
+      "answer": "No, this is a PPO plan so you do not need a referral to see a specialist. You can see any specialist directly.",
+      "related_sections": ["1.1", "3.2"]
+    },
+    {
+      "query": "How much does a primary care visit cost?",
+      "answer": "In-network primary care visits cost between $0 to $10 copay. Out-of-network visits cost 30% coinsurance.",
+      "related_sections": ["3.1"]
+    },
+    {
+      "query": "Are generic drugs covered?",
+      "answer": "Yes, preferred generic drugs (Tier 1) have $0 copay for both 30-day retail and 90-day mail order. Non-preferred generics (Tier 2) cost $10 for 30-day retail and $25 for 90-day mail order.",
+      "related_sections": ["7.2", "7.3"]
+    },
+    {
+      "query": "Is preventive care covered?",
+      "answer": "Yes, preventive care is covered at 100% in-network with no deductible, copay, or coinsurance. This includes annual physicals, mammograms, vaccines, and screenings.",
+      "related_sections": ["8.1", "8.2"]
+    },
+    {
+      "query": "Does the plan cover vision and dental?",
+      "answer": "Yes, the plan includes vision benefits ($0 eye exam, $200/year for glasses/contacts) and dental benefits ($0 for cleanings/exams, 30% coinsurance for fillings, major procedures not covered).",
+      "related_sections": ["10.1", "10.2"]
+    },
+    {
+      "query": "What services need prior authorization?",
+      "answer": "Services requiring prior authorization include: MRI/CT/PET scans, inpatient hospital admissions, outpatient surgeries over $2,000, home health care, DME over $500, all specialty prescriptions, and skilled nursing facility admissions.",
+      "related_sections": ["11.2"]
+    },
+    {
+      "query": "How much does an emergency room visit cost?",
+      "answer": "Emergency room visits have a $120 copay, which is the same for both in-network and out-of-network. The copay is waived if you are admitted to the hospital.",
+      "related_sections": ["3.4"]
+    },
+    {
+      "query": "Does the plan cover telehealth?",
+      "answer": "Yes, in-network telehealth visits are $0 copay for primary care and $20 copay for specialists. Out-of-network telehealth is not covered.",
+      "related_sections": ["5.1"]
+    },
+    {
+      "query": "What is covered under mental health?",
+      "answer": "Outpatient mental health therapy is $20 copay in-network, psychiatrist visits are $35 copay in-network. Inpatient mental health is $295/day for days 1-5, then $0 for days 6+.",
+      "related_sections": ["9.1", "9.2", "9.3"]
+    },
+    {
+      "query": "Are hearing aids covered?",
+      "answer": "Yes, routine hearing exams are $0 copay. Hearing aids are available through the Humana TruHearing program for $699 to $999 per device.",
+      "related_sections": ["10.3"]
+    },
+    {
+      "query": "What is the SilverSneakers program?",
+      "answer": "SilverSneakers is a fitness program included at no extra cost with this plan, providing access to fitness centers and exercise classes.",
+      "related_sections": ["10.4"]
+    },
+    {
+      "query": "How much does a specialist visit cost?",
+      "answer": "Specialist visits cost $35 copay in-network and 40% coinsurance out-of-network. No referral is required.",
+      "related_sections": ["3.2"]
+    },
+    {
+      "query": "What happens if I go out of network?",
+      "answer": "You can see out-of-network providers, but you'll pay higher costs. Out-of-network services have higher deductible ($850), higher coinsurance (typically 30-50%), and count toward a combined $8,000 out-of-pocket maximum.",
+      "related_sections": ["1.1", "2.1", "2.2"]
+    }
+  ],
+  "glossary": [
+    {
+      "term": "PPO (Preferred Provider Organization)",
+      "definition": "A type of health plan that offers flexibility to see any provider, with lower costs when using in-network providers and no referral requirements for specialists."
+    },
+    {
+      "term": "Deductible",
+      "definition": "The amount you pay for covered healthcare services before your insurance plan starts to pay."
+    },
+    {
+      "term": "Out-of-Pocket Maximum",
+      "definition": "The most you pay for covered services in a year. Once you reach this amount, your insurance pays 100% of covered services."
+    },
+    {
+      "term": "Copay",
+      "definition": "A fixed amount you pay for a covered healthcare service, such as $35 for a specialist visit."
+    },
+    {
+      "term": "Coinsurance",
+      "definition": "Your share of the costs of a covered healthcare service, calculated as a percentage (for example, 30%) of the allowed amount for the service."
+    },
+    {
+      "term": "In-Network",
+      "definition": "Healthcare providers that have a contract with your health insurance plan. Using in-network providers costs less."
+    },
+    {
+      "term": "Out-of-Network",
+      "definition": "Healthcare providers that do not have a contract with your health insurance plan. Using out-of-network providers costs more."
+    },
+    {
+      "term": "Medicare Advantage",
+      "definition": "A type of Medicare health plan offered by private companies that contract with Medicare to provide Part A and Part B benefits, often including additional benefits like prescription drug coverage."
+    },
+    {
+      "term": "Prior Authorization",
+      "definition": "Approval from your health insurance plan required before receiving certain services or medications to ensure they are covered."
+    },
+    {
+      "term": "Formulary",
+      "definition": "A list of prescription drugs covered by your health insurance plan, organized into tiers with different cost-sharing amounts."
+    },
+    {
+      "term": "Specialty Drugs",
+      "definition": "High-cost prescription medications used to treat complex or rare conditions, requiring special handling and often filled through specialty pharmacies."
+    },
+    {
+      "term": "Preventive Care",
+      "definition": "Healthcare services focused on preventing illness, such as annual checkups, screenings, and vaccinations, often covered at 100% with no cost-sharing."
+    },
+    {
+      "term": "Telehealth",
+      "definition": "Healthcare services delivered remotely through video or phone appointments with healthcare providers."
+    },
+    {
+      "term": "Durable Medical Equipment (DME)",
+      "definition": "Medical equipment ordered by a doctor for use in the home, such as wheelchairs, walkers, hospital beds, or oxygen equipment."
+    },
+    {
+      "term": "Skilled Nursing Facility",
+      "definition": "A facility that provides skilled nursing care and rehabilitation services for patients who need professional nursing care but not hospital-level care."
+    }
+  ]
+}

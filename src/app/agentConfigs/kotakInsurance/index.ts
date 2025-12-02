@@ -191,19 +191,27 @@ const verifyPANTool = tool({
 
 const lookupPincodeTool = tool({
   name: 'lookupPincode',
-  description: 'Looks up city and state information for a given pincode.',
+  description: 'Looks up city and state information for a given pincode',
   parameters: z.object({
     pincode: z.string().length(6).describe('6-digit Indian pincode'),
   }),
   execute: async ({ pincode }: { pincode: string }) => {
     const mockPincodeData: Record<string, { city: string; state: string }> = {
+      '700016': { city: 'Kolkata', state: 'West Bengal' },
+      '134117': { city: 'Panchkula', state: 'Haryana' },
+      '560068': { city: 'Bangalore', state: 'Karnataka' },
       '400101': { city: 'Mumbai', state: 'Maharashtra' },
-      '110001': { city: 'New Delhi', state: 'Delhi' },
-      '560001': { city: 'Bangalore', state: 'Karnataka' },
-      '700001': { city: 'Kolkata', state: 'West Bengal' },
+      '500032': { city: 'Hyderabad', state: 'Telangana' },
     };
 
-    const data = mockPincodeData[pincode] || { city: 'Mumbai', state: 'Maharashtra' };
+    const data = mockPincodeData[pincode];
+    
+    if (!data) {
+      return {
+        success: false,
+        message: 'Pincode not found in our records. Please verify and provide the correct pincode.',
+      };
+    }
 
     stateManager.updateState({
       pincode,
@@ -212,6 +220,7 @@ const lookupPincodeTool = tool({
     });
 
     return {
+      success: true,
       city: data.city,
       state: data.state,
       pincode: pincode,
@@ -241,7 +250,7 @@ const sendAadhaarOTPTool = tool({
 
 const verifyAadhaarOTPTool = tool({
   name: 'verifyAadhaarOTP',
-  description: 'Verifies the OTP sent to Aadhaar registered mobile number.',
+  description: 'Verifies the OTP sent to Aadhaar registered mobile number and retrieves address from Google Sheet.',
   parameters: z.object({
     otp_reference_id: z.string().describe('OTP reference ID from sendAadhaarOTP'),
     otp_code: z.string().describe('6-digit OTP code provided by user'),
@@ -251,20 +260,55 @@ const verifyAadhaarOTPTool = tool({
     const isValid = /^\d{6}$/.test(otp_code);
 
     if (isValid) {
-      const mockAddress = state.city
-        ? `101, Hill View, ${state.city} - ${state.pincode}`
-        : '101, Hill View, Mumbai - 400101';
+      const aadhaarNumber = state.aadhaar_number?.replace(/\s/g, '');
+      
+      const mockAadhaarData: Record<string, { address: string; dob: string; name: string }> = {
+        '806012121818': { 
+          address: '101/23, Street 1501, Park Street, Kolkata - 700016',
+          dob: '18/05/1994',
+          name: 'Arkadeep Joardar'
+        },
+        '761275436789': { 
+          address: 'Plot No 15, Sector 20, Panchkula, Haryana 134117',
+          dob: '27/06/1987',
+          name: 'Vishal Sharma'
+        },
+        '889876567788': { 
+          address: '109, Tower 8, Reed, Salarpuria Serenity, Bomanahalli, Bangalore - 560068',
+          dob: '13/02/1992',
+          name: 'Bharat Sethi'
+        },
+        '999889891222': { 
+          address: '211, Alpine, Salarpuria Greenage, Bandra, Mumbai - 400101',
+          dob: '13/01/1998',
+          name: 'Jay Iyer'
+        },
+        '769879791223': { 
+          address: '157, Salarpuria Meadows, Gachibowli, Hyderabad - 500032',
+          dob: '19/08/1989',
+          name: 'Pruthvi Vikas'
+        },
+      };
+
+      const aadhaarInfo = mockAadhaarData[aadhaarNumber || ''];
+      
+      if (!aadhaarInfo) {
+        return {
+          success: false,
+          message: 'Aadhaar number not found in our records. Please verify the Aadhaar number.',
+        };
+      }
 
       stateManager.updateState({
-        aadhaar_address: mockAddress,
-        aadhaar_dob: state.date_of_birth || '09/06/1992',
+        aadhaar_address: aadhaarInfo.address,
+        aadhaar_dob: aadhaarInfo.dob,
       });
 
       return {
         success: true,
-        address: mockAddress,
-        dob: state.date_of_birth || '09/06/1992',
-        name: state.full_name || 'Unknown',
+        address: aadhaarInfo.address,
+        dob: aadhaarInfo.dob,
+        name: aadhaarInfo.name,
       };
     } else {
       return {

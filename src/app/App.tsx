@@ -30,6 +30,7 @@ import { customerServiceRetailCompanyName } from "@/app/agentConfigs/customerSer
 import { chatSupervisorCompanyName } from "@/app/agentConfigs/chatSupervisor";
 import { simpleHandoffScenario } from "@/app/agentConfigs/simpleHandoff";
 import kotakInsuranceScenario from "@/app/agentConfigs/kotakInsurance";
+import usHealthInsuranceScenario, { usHealthInsuranceCompanyName } from "@/app/agentConfigs/US_health_insurance";
 
 // Map used by connect logic for scenarios defined via the SDK.
 const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
@@ -37,6 +38,7 @@ const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
   customerServiceRetail: customerServiceRetailScenario,
   chatSupervisor: chatSupervisorScenario,
   kotakInsurance: kotakInsuranceScenario,
+  usHealthInsurance: usHealthInsuranceScenario,
 };
 
 import useAudioDownload from "./hooks/useAudioDownload";
@@ -207,9 +209,13 @@ function App() {
 
         const companyName = agentSetKey === 'customerServiceRetail'
           ? customerServiceRetailCompanyName
-          : chatSupervisorCompanyName;
-        
-        const outputGuardrails = agentSetKey === 'kotakInsurance'
+          : agentSetKey === 'chatSupervisor'
+          ? chatSupervisorCompanyName
+          : agentSetKey === 'usHealthInsurance'
+          ? usHealthInsuranceCompanyName
+          : 'Company';
+
+        const outputGuardrails = (agentSetKey === 'kotakInsurance' || agentSetKey === 'usHealthInsurance')
           ? []
           : [createModerationGuardrail(companyName)];
 
@@ -272,7 +278,7 @@ function App() {
 
     // Send an initial 'hi' message to trigger the agent to greet the user
     if (shouldTriggerResponse) {
-      sendSimulatedUserMessage('hi <respond with an indian accent>');
+      sendSimulatedUserMessage('hi!, I would like to renew my health insurance plan.');
     }
     return;
   }
@@ -427,15 +433,15 @@ function App() {
         >
           <div>
             <Image
-              src="https://upload.wikimedia.org/wikipedia/en/3/39/Kotak_Mahindra_Group_logo.svg"
-              alt="Kotak Logo"
+              src="/su-logo.svg"
+              alt="Search Unify Logo"
               width={60}
               height={30}
               className="mr-2"
             />
           </div>
           <div>
-            Invest Now in Kotak e-Invest Plus Unit-Linked Insurance Plan
+            Welcome to the SU Health Insurance Renewal Voice Agent 
           </div>
         </div>
         {/* <div className="flex items-center">
