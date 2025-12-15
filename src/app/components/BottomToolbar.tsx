@@ -13,6 +13,9 @@ interface BottomToolbarProps {
   setIsEventsPaneExpanded: (val: boolean) => void;
   isAudioPlaybackEnabled: boolean;
   setIsAudioPlaybackEnabled: (val: boolean) => void;
+  agentSetKey?: string;
+  onConnectWithFlow?: (flowType: 'morning' | 'evening') => void;
+  selectedFlow?: 'morning' | 'evening' | null;
 }
 
 function BottomToolbar({
@@ -27,9 +30,14 @@ function BottomToolbar({
   setIsEventsPaneExpanded,
   isAudioPlaybackEnabled,
   setIsAudioPlaybackEnabled,
+  agentSetKey,
+  onConnectWithFlow,
+  selectedFlow,
 }: BottomToolbarProps) {
   const isConnected = sessionStatus === "CONNECTED";
   const isConnecting = sessionStatus === "CONNECTING";
+  const isKotakPOC = agentSetKey === 'kotakPOC';
+  const isDisconnected = sessionStatus === "DISCONNECTED";
 
   function getConnectionButtonLabel() {
     if (isConnected) return "Disconnect";
@@ -51,13 +59,32 @@ function BottomToolbar({
 
   return (
     <div className="p-4 flex flex-row items-center justify-center gap-x-8">
-      <button
-        onClick={onToggleConnection}
-        className={getConnectionButtonClasses()}
-        disabled={isConnecting}
-      >
-        {getConnectionButtonLabel()}
-      </button>
+      {isKotakPOC && isDisconnected ? (
+        <div className="flex gap-2">
+          <button
+            onClick={() => onConnectWithFlow?.('morning')}
+            className="bg-amber-600 hover:bg-amber-700 text-white text-base p-2 px-4 rounded-md cursor-pointer"
+          >
+            ☀️ Morning Leads
+          </button>
+          <button
+            onClick={() => onConnectWithFlow?.('evening')}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white text-base p-2 px-4 rounded-md cursor-pointer"
+          >
+            🌙 Evening Leads
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={onToggleConnection}
+          className={getConnectionButtonClasses()}
+          disabled={isConnecting}
+        >
+          {isKotakPOC && isConnected && selectedFlow 
+            ? `Disconnect (${selectedFlow === 'morning' ? '☀️ Morning' : '🌙 Evening'})` 
+            : getConnectionButtonLabel()}
+        </button>
+      )}
 
       <div className="flex flex-row items-center gap-2">
         <input

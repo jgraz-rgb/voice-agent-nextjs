@@ -30,6 +30,7 @@ import { customerServiceRetailCompanyName } from "@/app/agentConfigs/customerSer
 import { chatSupervisorCompanyName } from "@/app/agentConfigs/chatSupervisor";
 import { simpleHandoffScenario } from "@/app/agentConfigs/simpleHandoff";
 import kotakInsuranceScenario from "@/app/agentConfigs/kotakInsurance";
+import kotakPOCScenario from "@/app/agentConfigs/Kotak_POC_Demo";
 import usHealthInsuranceScenario, { usHealthInsuranceCompanyName } from "@/app/agentConfigs/US_health_insurance";
 
 // Map used by connect logic for scenarios defined via the SDK.
@@ -38,6 +39,7 @@ const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
   customerServiceRetail: customerServiceRetailScenario,
   chatSupervisor: chatSupervisorScenario,
   kotakInsurance: kotakInsuranceScenario,
+  kotakPOC: kotakPOCScenario,
   usHealthInsurance: usHealthInsuranceScenario,
 };
 
@@ -61,6 +63,10 @@ function App() {
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   // Ref to identify whether the latest agent switch came from an automatic handoff
   const handoffTriggeredRef = useRef(false);
+
+  // State and ref for tracking morning/evening flow (Kotak POC)
+  const [selectedFlow, setSelectedFlow] = useState<'morning' | 'evening' | null>(null);
+  const selectedFlowRef = useRef<'morning' | 'evening' | null>(null);
 
   const sdkAudioElement = React.useMemo(() => {
     if (typeof window === 'undefined') return undefined;
@@ -145,6 +151,10 @@ function App() {
   }, [searchParams]);
 
   useEffect(() => {
+    const agentSetKey = searchParams.get("agentConfig") || "default";
+    // Skip auto-connect for kotakPOC - user must select morning or evening flow first
+    if (agentSetKey === 'kotakPOC') return;
+    
     if (selectedAgentName && sessionStatus === "DISCONNECTED") {
       connectToRealtime();
     }
@@ -160,7 +170,11 @@ function App() {
         (a) => a.name === selectedAgentName
       );
       addTranscriptBreadcrumb(`Agent: ${selectedAgentName}`, currentAgent);
-      const shouldTrigger = (agentSetKey !== 'kotakInsurance') && !handoffTriggeredRef.current;
+      const currentAgentSetKey = searchParams.get("agentConfig") || "default";
+      // For kotakPOC, trigger response to send the morning/evening greeting
+      // For kotakInsurance, don't trigger (it has its own flow)
+      // For others, trigger the default greeting
+      const shouldTrigger = (currentAgentSetKey !== 'kotakInsurance') && !handoffTriggeredRef.current;
       updateSession(shouldTrigger);
       // Reset flag after handling so subsequent effects behave normally
       handoffTriggeredRef.current = false;
@@ -189,8 +203,15 @@ function App() {
     return data.client_secret.value;
   };
 
-  const connectToRealtime = async () => {
+  const connectToRealtime = async (flowType?: 'morning' | 'evening') => {
     const agentSetKey = searchParams.get("agentConfig") || "default";
+
+    // For kotakPOC, store the selected flow type
+    if (agentSetKey === 'kotakPOC' && flowType) {
+      selectedFlowRef.current = flowType;
+      setSelectedFlow(flowType);
+    }
+
     if (sdkScenarioMap[agentSetKey]) {
       if (sessionStatus !== "DISCONNECTED") return;
       setSessionStatus("CONNECTING");
@@ -240,6 +261,8 @@ function App() {
     disconnect();
     setSessionStatus("DISCONNECTED");
     setIsPTTUserSpeaking(false);
+    setSelectedFlow(null);
+    selectedFlowRef.current = null;
   };
 
   const sendSimulatedUserMessage = (text: string) => {
@@ -263,9 +286,9 @@ function App() {
       ? null
       : {
           type: 'server_vad',
-          threshold: 0.9,
+          threshold: 0.95,
           prefix_padding_ms: 300,
-          silence_duration_ms: 500,
+          silence_duration_ms: 700,
           create_response: true,
         };
 
@@ -276,9 +299,17 @@ function App() {
       },
     });
 
-    // Send an initial 'hi' message to trigger the agent to greet the user
+    // Send an initial message to trigger the agent to greet the user
     if (shouldTriggerResponse) {
-      sendSimulatedUserMessage('hi!, I would like to renew my health insurance plan.');
+      const agentSetKey = searchParams.get("agentConfig") || "default";
+      if (agentSetKey === 'kotakPOC') {
+        const greeting = selectedFlowRef.current === 'morning' 
+          ? 'Morning, yaar!' 
+          : 'Good evening, aap kaise ho?';
+        sendSimulatedUserMessage(greeting);
+      } else {
+        sendSimulatedUserMessage('hi!, I would like to renew my health insurance plan.');
+      }
     }
     return;
   }
@@ -321,6 +352,12 @@ function App() {
       setSessionStatus("DISCONNECTED");
     } else {
       connectToRealtime();
+    }
+  };
+
+  const onConnectWithFlow = (flowType: 'morning' | 'evening') => {
+    if (sessionStatus === "DISCONNECTED") {
+      connectToRealtime(flowType);
     }
   };
 
@@ -538,6 +575,9 @@ function App() {
         setIsEventsPaneExpanded={setIsEventsPaneExpanded}
         isAudioPlaybackEnabled={isAudioPlaybackEnabled}
         setIsAudioPlaybackEnabled={setIsAudioPlaybackEnabled}
+        agentSetKey={agentSetKey}
+        onConnectWithFlow={onConnectWithFlow}
+        selectedFlow={selectedFlow}
       />
     </div>
   );

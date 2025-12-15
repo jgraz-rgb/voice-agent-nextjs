@@ -5,16 +5,16 @@ if (typeof window !== 'undefined' && navigator?.mediaDevices?.getUserMedia) {
     if (constraints.audio === true) {
       constraints.audio = {
         echoCancellation: true,
-        noiseSuppression: false,
-        autoGainControl: false,
+        noiseSuppression: true,
+        autoGainControl: true,
         sampleRate: 48000,
         channelCount: 1,
       };
     } else if (typeof constraints.audio === 'object') {
       constraints.audio = {
         echoCancellation: true,
-        noiseSuppression: false,
-        autoGainControl: false,
+        noiseSuppression: true,
+        autoGainControl: true,
         sampleRate: 48000,
         channelCount: 1,
         ...constraints.audio,
