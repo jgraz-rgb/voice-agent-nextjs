@@ -1,7 +1,7 @@
 "use client";
 import "@/app/lib/audioConstraintsPatch";
 import React, { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 
 import Image from "next/image";
@@ -44,8 +44,9 @@ const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
 import useAudioDownload from "./hooks/useAudioDownload";
 import { useHandleSessionHistory } from "./hooks/useHandleSessionHistory";
 
-function App() {
+function App({welcomeMessage, imageUrl,WorkflowImage}) {
   const searchParams = useSearchParams()!;
+  const pathname = usePathname();
 
   const {
     addTranscriptMessage,
@@ -127,22 +128,45 @@ function App() {
 
   useHandleSessionHistory();
 
+  const pathAgentConfigKey = React.useMemo(() => {
+    if (!pathname) return null;
+    if (pathname.startsWith("/loan")) return "kotakInsurance";
+    if (pathname.startsWith("/health")) return "usHealthInsurance";
+    return null;
+  }, [pathname]);
+
+  const fallbackAgentConfigKey = pathAgentConfigKey ?? defaultAgentSetKey;
+
   useEffect(() => {
-    let finalAgentConfig = searchParams.get("agentConfig");
-    if (!finalAgentConfig || !allAgentSets[finalAgentConfig]) {
-      finalAgentConfig = defaultAgentSetKey;
+    const currentAgentConfig = searchParams.get("agentConfig");
+    const hasValidConfig =
+      typeof currentAgentConfig === "string" &&
+      Boolean(allAgentSets[currentAgentConfig]);
+
+    // Enforce the agent that matches the path when present, otherwise
+    // fall back to a valid query param or the default agent config.
+    const desiredAgentConfig: string =
+      pathAgentConfigKey ||
+      (hasValidConfig && currentAgentConfig) ||
+      fallbackAgentConfigKey;
+
+    const needsUpdate =
+      !hasValidConfig ||
+      (pathAgentConfigKey && currentAgentConfig !== pathAgentConfigKey);
+
+    if (needsUpdate) {
       const url = new URL(window.location.toString());
-      url.searchParams.set("agentConfig", finalAgentConfig);
+      url.searchParams.set("agentConfig", desiredAgentConfig);
       window.location.replace(url.toString());
       return;
     }
 
-    const agents = allAgentSets[finalAgentConfig];
+    const agents = allAgentSets[desiredAgentConfig];
     const agentKeyToUse = agents[0]?.name || "";
 
     setSelectedAgentName(agentKeyToUse);
     setSelectedAgentConfigSet(agents);
-  }, [searchParams]);
+  }, [searchParams, fallbackAgentConfigKey, pathAgentConfigKey]);
 
   useEffect(() => {
     if (selectedAgentName && sessionStatus === "DISCONNECTED") {
@@ -175,7 +199,7 @@ function App() {
 
   const fetchEphemeralKey = async (): Promise<string | null> => {
     logClientEvent({ url: "/session" }, "fetch_session_token_request");
-    const tokenResponse = await fetch("/api/session");
+    const tokenResponse = await fetch("/bfsi-agentic-suite/api/session");
     const data = await tokenResponse.json();
     logServerEvent(data, "fetch_session_token_response");
 
@@ -433,7 +457,7 @@ function App() {
         >
           <div>
             <Image
-              src="/su-logo.svg"
+              src={imageUrl}
               alt="Search Unify Logo"
               width={60}
               height={30}
@@ -441,7 +465,7 @@ function App() {
             />
           </div>
           <div>
-            Welcome to the SU Health Insurance Renewal Voice Agent 
+            {welcomeMessage}
           </div>
         </div>
         {/* <div className="flex items-center">
@@ -510,7 +534,7 @@ function App() {
       <div className="flex flex-1 gap-2 px-2 overflow-hidden relative">
 
         <WorkflowSection
-        
+        WorkflowImage={WorkflowImage}
         />
 
         <Transcript

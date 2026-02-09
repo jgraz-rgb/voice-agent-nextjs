@@ -1,16 +1,7 @@
-import React, { Suspense } from "react";
-import { TranscriptProvider } from "@/app/contexts/TranscriptContext";
-import { EventProvider } from "@/app/contexts/EventContext";
-import App from "./App";
-
 export default function Page() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <TranscriptProvider>
-        <EventProvider>
-          <App />
-        </EventProvider>
-      </TranscriptProvider>
-    </Suspense>
+    <div className="flex h-screen items-center justify-center bg-gray-100 text-gray-900">
+      <h1 className="text-2xl font-semibold">Welcome to SU BANK</h1>
+    </div>
   );
 }

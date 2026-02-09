@@ -3,7 +3,7 @@
 import React from "react";
 import Image from "next/image";
 
-function WorkflowSection() {
+function WorkflowSection({WorkflowImage}) {
 
   return (
     <div className="flex flex-col bg-white min-h-0 rounded-xl w-[65%]">
@@ -15,7 +15,7 @@ function WorkflowSection() {
         {/* Transcript Content */}
         <div className="overflow-auto p-4 flex flex-col gap-y-4 h-full">
           <Image
-            src="/workflow1112.png"
+            src={WorkflowImage}
             alt="Workflow overview for the Searchunify Agentic Suite"
             width={7080}
             height={3624}

@@ -7,15 +7,23 @@ WORKDIR /src
 
 # --- Dependencies stage ---
 FROM base AS deps
-COPY package.json package-lock.json ./
+COPY package.json ./
+RUN npm i
 RUN npm ci
 
 # --- Build stage ---
 FROM base AS builder
 ENV NODE_ENV=production
-COPY --from=deps /src/node_modules ./node_modules
+
+# Copy node_modules from deps
+#COPY --from=deps /src/node_modules ./node_modules
+
+# Copy the rest of the app source
 COPY . .
+
+# Build the app
 RUN npm run build
+
 # Remove devDependencies before copying to the runtime image
 RUN npm prune --omit=dev
 
@@ -41,3 +49,4 @@ COPY --from=builder /src/node_modules ./node_modules
 USER nextjs
 EXPOSE 8005
 CMD ["npm", "run", "start"]
+
