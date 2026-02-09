@@ -1,0 +1,204 @@
+{
+  "articles": [
+    {
+      "id": "coverage-types",
+      "title": "Types of Auto Insurance Coverage",
+      "category": "Coverage",
+      "content": "There are several types of auto insurance coverage available: Liability Coverage pays for damage you cause to others, including bodily injury and property damage. It's required in most states. Collision Coverage pays for damage to your car from accidents, regardless of fault. Comprehensive Coverage pays for damage to your car from non-collision events like theft, vandalism, weather, or hitting an animal. Uninsured/Underinsured Motorist Coverage protects you if you're hit by someone without adequate insurance. Medical Payments Coverage pays for medical expenses for you and your passengers regardless of fault. Personal Injury Protection (PIP) covers medical expenses, lost wages, and other costs regardless of fault.",
+      "keywords": ["liability", "collision", "comprehensive", "coverage", "uninsured motorist", "medical payments", "PIP"]
+    },
+    {
+      "id": "deductibles",
+      "title": "Understanding Deductibles",
+      "category": "Coverage",
+      "content": "A deductible is the amount you pay out of pocket before your insurance kicks in for a claim. For example, if you have a $1,000 deductible and $5,000 in damage, you pay $1,000 and insurance pays $4,000. Higher deductibles mean lower monthly premiums, but more out-of-pocket costs when you file a claim. Common deductible amounts are $500, $1,000, and $2,000. Choose a deductible you can comfortably afford in case of an accident.",
+      "keywords": ["deductible", "out of pocket", "claim", "premium"]
+    },
+    {
+      "id": "discounts",
+      "title": "Available Discounts",
+      "category": "Discounts",
+      "content": "We offer many discounts to help you save on your premium. Good Driver Discount: Save up to $39/month with a clean driving record. Safety Features Discount: $7/month for anti-theft devices, automatic braking, or dashcams. Low Mileage Discount: $5/month if you drive less than 7,500 miles per year. Defensive Driving Discount: $2/month for completing an approved course in the last 3 years. Good Student Discount: $3/month for students aged 16-25 with a 3.0+ GPA. AAA Membership Discount: $5/month for AAA members. Multi-Policy Discount: Save 15-25% by bundling home and auto insurance.",
+      "keywords": ["discount", "save", "good driver", "safety", "low mileage", "defensive driving", "good student", "AAA", "bundle"]
+    },
+    {
+      "id": "state-minimums",
+      "title": "State Minimum Requirements",
+      "category": "Coverage",
+      "content": "Each state has minimum liability insurance requirements. California requires 15/30/5 ($15,000 per person/$30,000 per accident bodily injury, $5,000 property damage). However, these minimums may not adequately protect you in a serious accident. We recommend at least 100/300/100 coverage for better protection. The cost difference is usually only $10-20 more per month but provides significantly better coverage.",
+      "keywords": ["state minimum", "liability", "requirements", "California", "coverage limits"]
+    },
+    {
+      "id": "bundling",
+      "title": "Bundle and Save",
+      "category": "Discounts",
+      "content": "Bundling your home and auto insurance typically saves 15-25% on both policies. If you own your home, combining your policies with us can result in significant savings. For example, if your standalone auto insurance is $129/month and home insurance is $142/month, bundling could reduce your auto to $110/month and home to $121/month, saving you $40 every month or $480 per year.",
+      "keywords": ["bundle", "home", "auto", "save", "discount", "homeowner"]
+    },
+    {
+      "id": "vin-info",
+      "title": "Vehicle Identification Number (VIN)",
+      "category": "Vehicle",
+      "content": "Your VIN is a 17-character code that uniquely identifies your vehicle. You can find it on your registration card, insurance card, or on the dashboard near the windshield on the driver's side. Providing your VIN helps us quickly and accurately get your vehicle's year, make, model, and trim, reducing the number of questions we need to ask.",
+      "keywords": ["VIN", "vehicle identification number", "registration", "dashboard"]
+    },
+    {
+      "id": "financed-vehicle",
+      "title": "Coverage for Financed Vehicles",
+      "category": "Coverage",
+      "content": "If you're still making payments on your vehicle (financing or leasing), your lender requires you to carry comprehensive and collision coverage. This protects their investment in case your car is damaged or totaled. Once your car is paid off, you can choose whether to keep or drop these coverages.",
+      "keywords": ["financed", "leased", "loan", "lender", "comprehensive", "collision", "required"]
+    },
+    {
+      "id": "roadside-assistance",
+      "title": "Roadside Assistance Coverage",
+      "category": "Add-ons",
+      "content": "Roadside assistance coverage provides help when you're stranded. For $8 per month, you get: Towing to the nearest repair shop, flat tire changes, battery jump-starts, lockout service if you lock your keys in the car, and fuel delivery if you run out of gas. This coverage can save you hundreds of dollars on a single tow truck call.",
+      "keywords": ["roadside", "towing", "flat tire", "battery", "lockout", "fuel delivery"]
+    },
+    {
+      "id": "rental-reimbursement",
+      "title": "Rental Car Reimbursement",
+      "category": "Add-ons",
+      "content": "Rental car reimbursement coverage pays for a rental car while your vehicle is being repaired after a covered accident. For $12 per month, you can have transportation without paying out of pocket for a rental. This coverage typically provides up to $30-50 per day for a rental car for up to 30 days.",
+      "keywords": ["rental", "reimbursement", "rental car", "transportation", "repair"]
+    },
+    {
+      "id": "claims-process",
+      "title": "Filing a Claim",
+      "category": "Claims",
+      "content": "To file a claim, call our claims hotline or log into your online account. Provide details about the incident, including date, time, location, and what happened. Take photos of any damage if safe to do so. Get contact information from other parties involved and any witnesses. A claims adjuster will contact you within 24-48 hours to guide you through the process.",
+      "keywords": ["claim", "file", "accident", "damage", "adjuster"]
+    },
+    {
+      "id": "payment-options",
+      "title": "Payment Options",
+      "category": "Billing",
+      "content": "We offer flexible payment options. You can pay monthly with automatic payments from your bank account or credit card. We also offer a discount if you pay your full 6-month premium upfront, typically saving about $54 over the term. Your first payment is due when your policy starts.",
+      "keywords": ["payment", "monthly", "billing", "automatic", "upfront", "discount"]
+    },
+    {
+      "id": "policy-changes",
+      "title": "Making Changes to Your Policy",
+      "category": "Policy",
+      "content": "You can make changes to your policy at any time. Common changes include adding or removing vehicles, adding drivers, changing coverage levels, or updating your address. Changes typically take effect immediately. Some changes may affect your premium, and we'll let you know before processing.",
+      "keywords": ["changes", "add vehicle", "remove", "driver", "coverage", "address"]
+    }
+  ],
+  "faqs": [
+    {
+      "question": "What is liability coverage?",
+      "answer": "Liability coverage pays for damage you cause to other people and their property in an accident. It has two parts: bodily injury liability (covers medical expenses, lost wages, pain and suffering for others) and property damage liability (covers repair or replacement of others' property). Most states require minimum liability coverage."
+    },
+    {
+      "question": "What's the difference between collision and comprehensive coverage?",
+      "answer": "Collision coverage pays for damage to your car from accidents with other vehicles or objects, regardless of fault. Comprehensive coverage pays for non-collision damage like theft, vandalism, fire, weather events, or hitting an animal. If you have a car loan, you usually need both."
+    },
+    {
+      "question": "How can I lower my premium?",
+      "answer": "There are several ways to lower your premium: Choose a higher deductible, maintain a clean driving record, take a defensive driving course, bundle with home insurance, ask about all available discounts, drive fewer miles, and keep your credit score healthy."
+    },
+    {
+      "question": "What discounts do you offer?",
+      "answer": "We offer many discounts including: good driver discount (up to $39/month), safety features discount ($7/month), low mileage discount ($5/month for under 7,500 miles/year), defensive driving discount ($2/month), good student discount ($3/month for students with 3.0+ GPA), AAA membership discount ($5/month), and multi-policy bundle discount (15-25% off)."
+    },
+    {
+      "question": "Do I need comprehensive coverage?",
+      "answer": "Comprehensive coverage is optional unless you're financing or leasing your vehicle, in which case your lender requires it. Even if not required, comprehensive coverage is valuable if your car would be expensive to replace or you live in an area with high theft, vandalism, or severe weather."
+    },
+    {
+      "question": "What happens if I'm in an accident?",
+      "answer": "First, make sure everyone is safe and call 911 if needed. Exchange information with the other driver. Take photos of the damage and scene. File a police report if required. Then contact us to file a claim. We'll guide you through the process and get you back on the road."
+    },
+    {
+      "question": "How long does it take to get a quote?",
+      "answer": "Our voice-based quote process takes about 5-7 minutes. We'll ask about your vehicle, driving history, and coverage preferences, then provide you with a personalized quote immediately."
+    },
+    {
+      "question": "Can I bundle my home and auto insurance?",
+      "answer": "Yes! Bundling your home and auto insurance typically saves 15-25% on both policies. If you own your home, we can provide a quick home insurance quote during your auto insurance application."
+    },
+    {
+      "question": "What is a VIN and where do I find it?",
+      "answer": "A VIN (Vehicle Identification Number) is a unique 17-character code for your vehicle. You can find it on your registration card, insurance card, or on the dashboard near the windshield on the driver's side. Providing your VIN helps us quickly get your vehicle details."
+    },
+    {
+      "question": "What is uninsured motorist coverage?",
+      "answer": "Uninsured motorist coverage protects you if you're hit by a driver who doesn't have insurance or doesn't have enough insurance to cover your damages. It covers your medical expenses and property damage in these situations."
+    },
+    {
+      "question": "How do I make a payment?",
+      "answer": "You can make payments through our secure online portal, by phone, or set up automatic payments from your bank account or credit card. We accept all major credit cards and electronic bank transfers."
+    },
+    {
+      "question": "Can I get insurance if I have a bad driving record?",
+      "answer": "Yes, we can still provide coverage even with accidents or violations on your record. Your premium may be higher, but we work to find you the best rate possible. Taking a defensive driving course can help lower your rate over time."
+    },
+    {
+      "question": "What is gap coverage?",
+      "answer": "Gap coverage pays the difference between what you owe on your car loan and what your car is worth if it's totaled. For example, if you owe $20,000 but your car is only worth $15,000, gap coverage pays the $5,000 difference. It's especially useful for new cars that depreciate quickly."
+    },
+    {
+      "question": "Do you offer rental car coverage?",
+      "answer": "Yes, rental car reimbursement coverage is available for $12 per month. It pays for a rental car while your vehicle is being repaired after a covered accident, typically up to $30-50 per day for up to 30 days."
+    },
+    {
+      "question": "What is roadside assistance?",
+      "answer": "Roadside assistance provides help when you're stranded. For $8 per month, it includes towing, flat tire changes, battery jump-starts, lockout service, and fuel delivery. It's a valuable add-on that can save you hundreds on a single emergency call."
+    },
+    {
+      "question": "When does my coverage start?",
+      "answer": "Your coverage starts on the date you choose during the application process, typically at 12:01 AM on that date. Many customers choose to have coverage start when their current policy ends to avoid any gaps."
+    },
+    {
+      "question": "How do I get proof of insurance?",
+      "answer": "Once your policy is active, you'll receive your insurance ID cards via email within minutes. You can also access digital ID cards through our mobile app or online portal at any time. Physical cards are mailed within 7-10 business days."
+    },
+    {
+      "question": "What's the minimum coverage required by law?",
+      "answer": "Minimum coverage requirements vary by state. For example, California requires 15/30/5 ($15,000 per person bodily injury, $30,000 per accident bodily injury, $5,000 property damage). However, we recommend higher limits like 100/300/100 for better protection."
+    }
+  ],
+  "glossary": [
+    {
+      "term": "Premium",
+      "definition": "The amount you pay for your insurance policy, typically monthly or every 6 months."
+    },
+    {
+      "term": "Deductible",
+      "definition": "The amount you pay out of pocket before insurance covers a claim."
+    },
+    {
+      "term": "Liability",
+      "definition": "Coverage that pays for damage you cause to others in an accident."
+    },
+    {
+      "term": "Comprehensive",
+      "definition": "Coverage for non-collision damage like theft, vandalism, or weather."
+    },
+    {
+      "term": "Collision",
+      "definition": "Coverage for damage to your car from accidents, regardless of fault."
+    },
+    {
+      "term": "VIN",
+      "definition": "Vehicle Identification Number - a unique 17-character code identifying your vehicle."
+    },
+    {
+      "term": "Lienholder",
+      "definition": "The bank or finance company that holds the loan on your vehicle."
+    },
+    {
+      "term": "Claim",
+      "definition": "A formal request to your insurance company for payment after a covered loss."
+    },
+    {
+      "term": "Policyholder",
+      "definition": "The person or entity who owns the insurance policy."
+    },
+    {
+      "term": "Underwriting",
+      "definition": "The process insurers use to evaluate risk and determine your premium."
+    }
+  ]
+}
