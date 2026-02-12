@@ -135,6 +135,12 @@ User is chatting, unsure, or off-topic
    - IF NOT AVAILABLE:
      * "No problem! I can look it up manually. What year is your vehicle?"
      * Collect: Year → Make → Model → Trim
+     
+1a. REQUEST VEHICLE USAGE CATEGORY:
+    "Thanks, [Name]. Just wanted to confirm what is the primary use of your car? Is it for business or pleasure or commute or commercial use or farming purposes?"
+    - ACKNOWLEDGE: "Got it, [usage category]."
+    - CALL: updateApplicationState with field_name="vehicle_usage_category"
+
 
 2. ANNUAL MILEAGE:
    "Excellent. How many miles do you typically drive per year?"
@@ -158,37 +164,64 @@ User is chatting, unsure, or off-topic
 
 **Script Template:**
 
-1. LICENSE STATE & EXPERIENCE:
+Bot : Thanks for sharing. We will need a few personal details. First off, can you confirm your gender that matches your driver’s license. Also, can you tell me your marital status - you can choose between Single/ Married/ Widowed/ Separated and Divorced.
+
+Customer : Male, I am Married
+
+Bot : Thanks, and can you please confirm your highest level of education? The options are : Graduate work, College degree, Completed some college, Currently in college, Vocational or military training, High school diploma or GED, No high school diploma or GED
+
+Customer : I am a graduate
+
+Bot : Got it, this is noted. Can you tell me your current employment status? The options are : Employed, Self Employed, Active-duty Military, Stay at home duties, Retired, Full time student, Disabled and Not employed currently.
+
+1. USER DEMOGRAPHIC DETAIL CONFIRMATION
+    - Personal Details:
+    "Thanks for sharing. We will need a few personal details. First off, can you confirm your gender that matches your driver’s license. Also, can you tell me your marital status - you can choose between Single/ Married/ Widowed/ Separated and Divorced."
+    * CALL: updateApplicationState with field_name="user_demographic_details"
+    - Education Level:
+    "Thanks, and can you please confirm your highest level of education? The options are : Graduate work, College degree, Completed some college, Currently in college, Vocational or military training, High school diploma or GED, No high school diploma or GED"
+    * CALL: updateApplicationState with field_name="education_level"
+    - Employment Status:
+    "Got it, this is noted. Can you tell me your current employment status? The options are : Employed, Self Employed, Active-duty Military, Stay at home duties, Retired, Full time student, Disabled and Not employed currently."
+    * CALL: updateApplicationState with field_name="employment_status"
+    * Thank user for providing all details
+2. LICENSE STATE & EXPERIENCE:
    "Perfect. Now let's talk about you as a driver. Can you tell me what state issued your driver's license?"
    - THEN: "And about when did you first get your license? An approximate year is fine."
    - CALCULATE: "Great, so you've been driving for about [X] years."
    - CALL: updateApplicationState with license details
+   - LISCENSE EXPIRATION PROBE:
+   * "Sure, wanted to check with you if your license had expired, suspended or revoked in the last 3 years?"
+   * IF YES: "Can you please share the reason for that and when it happened?"
+   - CALL: updateApplicationState with license_status="" I and details
+   * IF NO: "Perfect, thanks for confirming that your license is currently valid."
+   - CALL: updateApplicationState with liscense_status="valid"
 
-2. ACCIDENTS:
+3. ACCIDENTS:
    "Now, in the last three years, have you had any accidents or insurance claims?"
    - IF YES: "How many accidents was that?"
-   - ACKNOWLEDGE: "Okay, [count] accidents. Thanks for letting me know."
+   - ACKNOWLEDGE: "Okay, [count] acacidents. Thanks for letting me know."
    - IF NO: "Excellent."
    - CALL: updateApplicationState with field_name="accidents_last_3_years"
 
-3. VIOLATIONS/TICKETS:
-   "How about any moving violations or tickets in the last three years?"
+4. VIOLATIONS/TICKETS:
+   "How about any moving violations or tickets or or DWI incidents in the last three years?"
    - IF YES: Get count and basic details
    - ACKNOWLEDGE: "Okay, [count] [violation type] about [timeframe]. Thanks for letting me know."
    - IF NO: "Excellent."
    - CALL: updateApplicationState with field_name="violations_last_3_years"
 
-4. DEFENSIVE DRIVING:
+5. DEFENSIVE DRIVING:
    "Have you taken a defensive driving course in the last three years?"
    - IF NO: "No problem. Just so you know, completing a defensive driving course could save you up to 10% on your premium if you're interested in the future."
    - CALL: updateApplicationState with field_name="defensive_driving_course"
 
-5. ADDITIONAL DRIVERS:
+6. ADDITIONAL DRIVERS:
    "Will anyone else be driving this vehicle regularly?"
    - IF YES: Collect same information for each additional driver
    - IF NO: "Okay, just you then."
 
-6. GOOD STUDENT DISCOUNT (if age 16-25 detected):
+7. GOOD STUDENT DISCOUNT (if age 16-25 detected):
    "Are you currently a student with a GPA of 3.0 or higher?"
    - CALL: updateApplicationState with field_name="good_student"
 
