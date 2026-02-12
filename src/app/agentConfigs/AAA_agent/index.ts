@@ -1,5 +1,7 @@
 import { RealtimeAgent, tool } from '@openai/agents/realtime';
 import { z } from 'zod';
+import { promises as fs } from 'fs';
+import path from 'path';
 import { AAA_INSURANCE_INSTRUCTIONS } from './instructions';
 import { AAA_INSURANCE_INSTRUCTIONS_V2 } from './instructions_v2';
 import RAGDATA from './RAG.json';
@@ -39,6 +41,7 @@ interface ApplicationState {
   vehicle_make?: string;
   vehicle_model?: string;
   vehicle_trim?: string;
+  vehicle_usage_category?: string;
   annual_mileage?: number;
   ownership_status?: 'owned' | 'financed';
   has_lienholder?: boolean;
@@ -46,10 +49,16 @@ interface ApplicationState {
   estimated_vehicle_value?: number;
 
   // Stage 2: Driver
+  gender?: string;
+  marital_status?: string;
+  education_level?: string;
+  employment_status?: string;
   license_state?: string;
   license_year?: number;
+  license_status?: string;
   driving_experience_years?: number;
   accidents_last_3_years?: boolean;
+  accident_count?: number;
   accident_details?: string;
   violations_last_3_years?: boolean;
   violation_count?: number;
@@ -141,6 +150,119 @@ class StateManager {
 }
 
 const stateManager = new StateManager();
+
+// ============================================================================
+// STATE PERSISTENCE HELPER
+// ============================================================================
+
+const DATA_DIR = path.join(process.cwd(), 'data');
+const TICKET_PATH = path.join(DATA_DIR, 'zendesk_ticket.json');
+
+async function persistStateToFile(): Promise<void> {
+  const state = stateManager.getState();
+
+  const ticket: Record<string, unknown> = {
+    subject: `Auto Insurance Application - ${state.full_name ?? 'Unknown'} - Status: ${state.application_status ?? 'In Progress'}`,
+    application_status: state.application_status ?? 'In Progress',
+    updated_at: new Date().toISOString(),
+    identity: {
+      full_name: state.full_name ?? null,
+      date_of_birth: state.date_of_birth ?? null,
+      mobile_number: state.mobile_number ?? null,
+      otp_verified: state.otp_verified ?? null,
+      email_id: state.email_id ?? null,
+      zip_code: state.zip_code ?? null,
+      city: state.city ?? null,
+      state: state.state ?? null,
+      language_preference: state.language_preference ?? null,
+    },
+    vehicle: {
+      vin: state.vin ?? null,
+      year: state.vehicle_year ?? null,
+      make: state.vehicle_make ?? null,
+      model: state.vehicle_model ?? null,
+      trim: state.vehicle_trim ?? null,
+      estimated_value: state.estimated_vehicle_value ?? null,
+      annual_mileage: state.annual_mileage ?? null,
+      ownership_status: state.ownership_status ?? null,
+      has_lienholder: state.has_lienholder ?? null,
+      vehicle_count: state.vehicle_count ?? null,
+      vehicle_usage_category: state.vehicle_usage_category ?? null,
+    },
+    driver: {
+      gender: state.gender ?? null,
+      marital_status: state.marital_status ?? null,
+      education_level: state.education_level ?? null,
+      employment_status: state.employment_status ?? null,
+      license_state: state.license_state ?? null,
+      license_year: state.license_year ?? null,
+      license_status: state.license_status ?? null,
+      driving_experience_years: state.driving_experience_years ?? null,
+      accidents_last_3_years: state.accidents_last_3_years ?? null,
+      accident_count: state.accident_count ?? null,
+      accident_details: state.accident_details ?? null,
+      violations_last_3_years: state.violations_last_3_years ?? null,
+      violation_count: state.violation_count ?? null,
+      violation_details: state.violation_details ?? null,
+      defensive_driving_course: state.defensive_driving_course ?? null,
+      good_student_eligible: state.good_student_eligible ?? null,
+      additional_drivers: state.additional_drivers ?? null,
+    },
+    current_insurance: {
+      has_current_insurance: state.has_current_insurance ?? null,
+      current_carrier: state.current_carrier ?? null,
+      current_premium: state.current_premium ?? null,
+      current_policy_expiration: state.current_policy_expiration ?? null,
+      coverage_lapse: state.coverage_lapse ?? null,
+    },
+    coverage: {
+      liability_coverage_selection: state.liability_coverage_selection ?? null,
+      deductible: state.deductible ?? null,
+      comprehensive: state.comprehensive ?? null,
+      collision: state.collision ?? null,
+      roadside_assistance: state.roadside_assistance ?? null,
+      rental_reimbursement: state.rental_reimbursement ?? null,
+      anti_theft_device: state.anti_theft_device ?? null,
+    },
+    bundle: {
+      is_homeowner: state.is_homeowner ?? null,
+      bundle_interested: state.bundle_interested ?? null,
+      home_year_built: state.home_year_built ?? null,
+      home_square_footage: state.home_square_footage ?? null,
+      home_type: state.home_type ?? null,
+      home_has_mortgage: state.home_has_mortgage ?? null,
+      home_value: state.home_value ?? null,
+      home_claims_history: state.home_claims_history ?? null,
+      home_roof_type: state.home_roof_type ?? null,
+      home_roof_year: state.home_roof_year ?? null,
+      home_security_system: state.home_security_system ?? null,
+    },
+    quote_and_payment: {
+      quote_amount: state.quote_amount ?? null,
+      bundled_auto_quote: state.bundled_auto_quote ?? null,
+      bundled_home_quote: state.bundled_home_quote ?? null,
+      discounts_applied: state.discounts_applied ?? null,
+      total_discount_amount: state.total_discount_amount ?? null,
+      payment_preference: state.payment_preference ?? null,
+      policy_start_date: state.policy_start_date ?? null,
+      payment_completed: state.payment_completed ?? null,
+      policy_id: state.policy_id ?? null,
+      policy_link: state.policy_link ?? null,
+      aaa_member: state.aaa_member ?? null,
+    },
+    progress: {
+      current_stage: state.current_stage,
+      current_field: state.current_field,
+    },
+  };
+
+  try {
+    await fs.mkdir(DATA_DIR, { recursive: true });
+    await fs.writeFile(TICKET_PATH, JSON.stringify(ticket, null, 2), 'utf-8');
+  } catch (error) {
+    console.error('Failed to persist application state to file:', error);
+  }
+}
 
 // ============================================================================
 // TOOL API CLIENT HELPER
