@@ -31,7 +31,7 @@ import { chatSupervisorCompanyName } from "@/app/agentConfigs/chatSupervisor";
 import { simpleHandoffScenario } from "@/app/agentConfigs/simpleHandoff";
 import kotakInsuranceScenario from "@/app/agentConfigs/kotakInsurance";
 import usHealthInsuranceScenario, { usHealthInsuranceCompanyName } from "@/app/agentConfigs/US_health_insurance";
-
+import aaaInsuranceScenario, { aaaInsuranceCompanyName } from "@/app/agentConfigs/AAA_agent";
 // Map used by connect logic for scenarios defined via the SDK.
 const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
   simpleHandoff: simpleHandoffScenario,
@@ -39,12 +39,13 @@ const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
   chatSupervisor: chatSupervisorScenario,
   kotakInsurance: kotakInsuranceScenario,
   usHealthInsurance: usHealthInsuranceScenario,
+  aaaInsurance: aaaInsuranceScenario,
 };
 
 import useAudioDownload from "./hooks/useAudioDownload";
 import { useHandleSessionHistory } from "./hooks/useHandleSessionHistory";
 
-function App({welcomeMessage, imageUrl,WorkflowImage}) {
+function App({ welcomeMessage, imageUrl, WorkflowImage }) {
   const searchParams = useSearchParams()!;
   const pathname = usePathname();
 
@@ -109,13 +110,13 @@ function App({welcomeMessage, imageUrl,WorkflowImage}) {
       return stored ? stored === 'true' : true;
     },
   );
-  
+
 
   // Initialize the recording hook.
   const { startRecording, stopRecording, downloadRecording } =
     useAudioDownload();
 
-    
+
 
   const sendClientEvent = (eventObj: any, eventNameSuffix = "") => {
     try {
@@ -130,6 +131,7 @@ function App({welcomeMessage, imageUrl,WorkflowImage}) {
 
   const pathAgentConfigKey = React.useMemo(() => {
     if (!pathname) return null;
+    if (pathname.startsWith("/loan/AAAInsurance")) return "aaaInsurance";
     if (pathname.startsWith("/loan")) return "kotakInsurance";
     if (pathname.startsWith("/health")) return "usHealthInsurance";
     return null;
@@ -234,10 +236,12 @@ function App({welcomeMessage, imageUrl,WorkflowImage}) {
         const companyName = agentSetKey === 'customerServiceRetail'
           ? customerServiceRetailCompanyName
           : agentSetKey === 'chatSupervisor'
-          ? chatSupervisorCompanyName
-          : agentSetKey === 'usHealthInsurance'
-          ? usHealthInsuranceCompanyName
-          : 'Company';
+            ? chatSupervisorCompanyName
+            : agentSetKey === 'usHealthInsurance'
+              ? usHealthInsuranceCompanyName
+              : agentSetKey === 'aaaInsurance'
+                ? aaaInsuranceCompanyName
+                : 'Company';
 
         const outputGuardrails = (agentSetKey === 'kotakInsurance' || agentSetKey === 'usHealthInsurance')
           ? []
@@ -286,12 +290,12 @@ function App({welcomeMessage, imageUrl,WorkflowImage}) {
     const turnDetection = isPTTActive
       ? null
       : {
-          type: 'server_vad',
-          threshold: 0.9,
-          prefix_padding_ms: 300,
-          silence_duration_ms: 500,
-          create_response: true,
-        };
+        type: 'server_vad',
+        threshold: 0.9,
+        prefix_padding_ms: 300,
+        silence_duration_ms: 500,
+        create_response: true,
+      };
 
     sendEvent({
       type: 'session.update',
@@ -534,7 +538,7 @@ function App({welcomeMessage, imageUrl,WorkflowImage}) {
       <div className="flex flex-1 gap-2 px-2 overflow-hidden relative">
 
         <WorkflowSection
-        WorkflowImage={WorkflowImage}
+          WorkflowImage={WorkflowImage}
         />
 
         <Transcript

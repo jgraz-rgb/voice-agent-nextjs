@@ -1,6 +1,6 @@
 import { RealtimeAgent, tool } from '@openai/agents/realtime';
 import { z } from 'zod';
-import { promises as fs } from 'fs';
+// import { promises as fs } from 'fs';
 import path from 'path';
 import { AAA_INSURANCE_INSTRUCTIONS } from './instructions';
 import { AAA_INSURANCE_INSTRUCTIONS_V2 } from './instructions_v2';
@@ -150,119 +150,6 @@ class StateManager {
 }
 
 const stateManager = new StateManager();
-
-// ============================================================================
-// STATE PERSISTENCE HELPER
-// ============================================================================
-
-const DATA_DIR = path.join(process.cwd(), 'data');
-const TICKET_PATH = path.join(DATA_DIR, 'zendesk_ticket.json');
-
-async function persistStateToFile(): Promise<void> {
-  const state = stateManager.getState();
-
-  const ticket: Record<string, unknown> = {
-    subject: `Auto Insurance Application - ${state.full_name ?? 'Unknown'} - Status: ${state.application_status ?? 'In Progress'}`,
-    application_status: state.application_status ?? 'In Progress',
-    updated_at: new Date().toISOString(),
-    identity: {
-      full_name: state.full_name ?? null,
-      date_of_birth: state.date_of_birth ?? null,
-      mobile_number: state.mobile_number ?? null,
-      otp_verified: state.otp_verified ?? null,
-      email_id: state.email_id ?? null,
-      zip_code: state.zip_code ?? null,
-      city: state.city ?? null,
-      state: state.state ?? null,
-      language_preference: state.language_preference ?? null,
-    },
-    vehicle: {
-      vin: state.vin ?? null,
-      year: state.vehicle_year ?? null,
-      make: state.vehicle_make ?? null,
-      model: state.vehicle_model ?? null,
-      trim: state.vehicle_trim ?? null,
-      estimated_value: state.estimated_vehicle_value ?? null,
-      annual_mileage: state.annual_mileage ?? null,
-      ownership_status: state.ownership_status ?? null,
-      has_lienholder: state.has_lienholder ?? null,
-      vehicle_count: state.vehicle_count ?? null,
-      vehicle_usage_category: state.vehicle_usage_category ?? null,
-    },
-    driver: {
-      gender: state.gender ?? null,
-      marital_status: state.marital_status ?? null,
-      education_level: state.education_level ?? null,
-      employment_status: state.employment_status ?? null,
-      license_state: state.license_state ?? null,
-      license_year: state.license_year ?? null,
-      license_status: state.license_status ?? null,
-      driving_experience_years: state.driving_experience_years ?? null,
-      accidents_last_3_years: state.accidents_last_3_years ?? null,
-      accident_count: state.accident_count ?? null,
-      accident_details: state.accident_details ?? null,
-      violations_last_3_years: state.violations_last_3_years ?? null,
-      violation_count: state.violation_count ?? null,
-      violation_details: state.violation_details ?? null,
-      defensive_driving_course: state.defensive_driving_course ?? null,
-      good_student_eligible: state.good_student_eligible ?? null,
-      additional_drivers: state.additional_drivers ?? null,
-    },
-    current_insurance: {
-      has_current_insurance: state.has_current_insurance ?? null,
-      current_carrier: state.current_carrier ?? null,
-      current_premium: state.current_premium ?? null,
-      current_policy_expiration: state.current_policy_expiration ?? null,
-      coverage_lapse: state.coverage_lapse ?? null,
-    },
-    coverage: {
-      liability_coverage_selection: state.liability_coverage_selection ?? null,
-      deductible: state.deductible ?? null,
-      comprehensive: state.comprehensive ?? null,
-      collision: state.collision ?? null,
-      roadside_assistance: state.roadside_assistance ?? null,
-      rental_reimbursement: state.rental_reimbursement ?? null,
-      anti_theft_device: state.anti_theft_device ?? null,
-    },
-    bundle: {
-      is_homeowner: state.is_homeowner ?? null,
-      bundle_interested: state.bundle_interested ?? null,
-      home_year_built: state.home_year_built ?? null,
-      home_square_footage: state.home_square_footage ?? null,
-      home_type: state.home_type ?? null,
-      home_has_mortgage: state.home_has_mortgage ?? null,
-      home_value: state.home_value ?? null,
-      home_claims_history: state.home_claims_history ?? null,
-      home_roof_type: state.home_roof_type ?? null,
-      home_roof_year: state.home_roof_year ?? null,
-      home_security_system: state.home_security_system ?? null,
-    },
-    quote_and_payment: {
-      quote_amount: state.quote_amount ?? null,
-      bundled_auto_quote: state.bundled_auto_quote ?? null,
-      bundled_home_quote: state.bundled_home_quote ?? null,
-      discounts_applied: state.discounts_applied ?? null,
-      total_discount_amount: state.total_discount_amount ?? null,
-      payment_preference: state.payment_preference ?? null,
-      policy_start_date: state.policy_start_date ?? null,
-      payment_completed: state.payment_completed ?? null,
-      policy_id: state.policy_id ?? null,
-      policy_link: state.policy_link ?? null,
-      aaa_member: state.aaa_member ?? null,
-    },
-    progress: {
-      current_stage: state.current_stage,
-      current_field: state.current_field,
-    },
-  };
-
-  try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    await fs.writeFile(TICKET_PATH, JSON.stringify(ticket, null, 2), 'utf-8');
-  } catch (error) {
-    console.error('Failed to persist application state to file:', error);
-  }
-}
 
 // ============================================================================
 // TOOL API CLIENT HELPER
@@ -599,27 +486,27 @@ const calculateInsuranceQuoteTool = tool({
     vehicle_model: z.string().describe('Vehicle model'),
     vehicle_trim: z.string().describe('Vehicle trim'),
     estimated_vehicle_value: z.number().describe('Estimated vehicle value in dollars'),
-    
+
     driver_age: z.number().describe('Driver age in years'),
     zip_code: z.string().describe('ZIP code'),
     driving_experience_years: z.number().describe('Years of driving experience'),
     violation_count: z.number().describe('Number of violations in last 3 years'),
     accident_count: z.number().describe('Number of accidents in last 3 years'),
     annual_mileage: z.number().describe('Annual mileage'),
-    
+
     liability_level: z.enum(['15/30/5', '25/50/25', '50/100/50', '100/300/100', '250/500/100']).describe('Liability coverage level'),
     deductible: z.enum(['500', '1000', '2000']).describe('Deductible amount'),
     comprehensive: z.boolean().describe('Include comprehensive coverage'),
     collision: z.boolean().describe('Include collision coverage'),
     roadside_assistance: z.boolean().describe('Include roadside assistance'),
     rental_reimbursement: z.boolean().describe('Include rental reimbursement'),
-    
+
     anti_theft_device: z.boolean().describe('Has anti-theft device'),
     defensive_driving_course: z.boolean().describe('Completed defensive driving course'),
     good_student_eligible: z.boolean().describe('Eligible for good student discount'),
     aaa_member: z.boolean().describe('AAA member'),
     clean_driving_record: z.boolean().describe('Has clean driving record (for good driver discount)'),
-    
+
     include_home_bundle: z.boolean().optional().nullable().describe('Whether to calculate home insurance bundle'),
     home_value: z.number().optional().nullable().describe('Home value (required if include_home_bundle is true)'),
     home_year_built: z.number().optional().nullable().describe('Year home was built'),
@@ -636,7 +523,7 @@ const calculateInsuranceQuoteTool = tool({
       trim: params.vehicle_trim,
       estimated_value: params.estimated_vehicle_value,
     };
-    
+
     const driver: DriverProfile = {
       age: params.driver_age,
       zip_code: params.zip_code,
@@ -645,7 +532,7 @@ const calculateInsuranceQuoteTool = tool({
       accident_count: params.accident_count,
       annual_mileage: params.annual_mileage,
     };
-    
+
     const coverage: CoverageSelections = {
       liability_level: params.liability_level,
       deductible: parseInt(params.deductible) as 500 | 1000 | 2000,
@@ -654,7 +541,7 @@ const calculateInsuranceQuoteTool = tool({
       roadside_assistance: params.roadside_assistance,
       rental_reimbursement: params.rental_reimbursement,
     };
-    
+
     const discounts: DiscountFlags = {
       anti_theft_device: params.anti_theft_device,
       defensive_driving_course: params.defensive_driving_course,
@@ -664,9 +551,9 @@ const calculateInsuranceQuoteTool = tool({
       clean_driving_record: params.clean_driving_record,
       violation_count: params.violation_count,
     };
-    
+
     let result;
-    
+
     if (params.include_home_bundle && params.home_value) {
       const home: HomeInfo = {
         home_value: params.home_value,
@@ -676,9 +563,9 @@ const calculateInsuranceQuoteTool = tool({
         has_mortgage: params.home_has_mortgage || false,
         roof_age: params.home_roof_age || 10,
       };
-      
+
       result = calculateBundledQuote(vehicle, driver, coverage, discounts, home);
-      
+
       stateManager.updateState({
         quote_amount: result.auto_premium,
         bundled_auto_quote: result.bundled_auto_premium,
@@ -688,14 +575,14 @@ const calculateInsuranceQuoteTool = tool({
       });
     } else {
       result = calculateAutoInsurancePremium(vehicle, driver, coverage, discounts);
-      
+
       stateManager.updateState({
         quote_amount: result.auto_premium,
         discounts_applied: result.discounts_applied.map(d => `${d.name}: $${d.amount}`),
         total_discount_amount: result.total_discount_amount,
       });
     }
-    
+
     return {
       success: true,
       calculation_method: 'advanced_actuarial',
