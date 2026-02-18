@@ -131,7 +131,7 @@ function App({ welcomeMessage, imageUrl, WorkflowImage }) {
 
   const pathAgentConfigKey = React.useMemo(() => {
     if (!pathname) return null;
-    if (pathname.startsWith("/loan/AAAInsurance")) return "aaaInsurance";
+    if (pathname.startsWith("/auto")) return "aaaInsurance";
     if (pathname.startsWith("/loan")) return "kotakInsurance";
     if (pathname.startsWith("/health")) return "usHealthInsurance";
     return null;
