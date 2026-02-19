@@ -603,28 +603,27 @@ const sendEmailTool = tool({
     to_email,
     subject,
     body,
-    message
   }: {
     to_email: string;
     subject: string;
     body: string;
-    message: string; // Added message parameter for email template
   }) => {
     // 👇 Build dynamic message template
-    const message = `Thank you for applying for Kotak e-Invest Plus ULIP.
+    const message = `Thank you for applying for Through SU Insurance.
 Here are the details:
 
 ${body}`;
 
-    // 👇 Call API with message field
+    // 👇 Call API
     return await callToolAPI("email_tools", "send_email", {
       to_email,
       subject,
-      body,       // still sent for DB storage
-      message,    // 👈 used by email template
+      body,
+      message,
     });
   },
 });
+
 
 
 const confirmPaymentTool = tool({

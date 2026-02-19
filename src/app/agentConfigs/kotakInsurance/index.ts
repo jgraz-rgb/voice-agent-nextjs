@@ -404,9 +404,28 @@ const sendEmailTool = tool({
     subject: z.string().describe('Email subject line'),
     body: z.string().describe('Email body content'),
   }),
-  execute: async ({ to_email, subject, body }: { to_email: string; subject: string; body: string }) => {
-    // Call external tool API
-    return await callToolAPI("email_tools",'send_email', { to_email, subject, body });
+  execute: async ({
+    to_email,
+    subject,
+    body,
+  }: {
+    to_email: string;
+    subject: string;
+    body: string;
+  }) => {
+    // 👇 Build dynamic message template
+    const message = `Thank you for applying for Kotak e-Invest Plus ULIP.
+Here are the details:
+
+${body}`;
+
+    // 👇 Call API
+    return await callToolAPI("email_tools", "send_email", {
+      to_email,
+      subject,
+      body,
+      message,
+    });
   },
 });
 
