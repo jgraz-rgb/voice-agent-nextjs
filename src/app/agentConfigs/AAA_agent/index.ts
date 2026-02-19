@@ -615,7 +615,7 @@ Here are the details:
 ${body}`;
 
     // 👇 Call API
-    return await callToolAPI("email_tools", "send_email", {
+    return await callToolAPI("send_email", {
       to_email,
       subject,
       body,
@@ -793,36 +793,57 @@ const ragSearchTool = tool({
 });
 
 const createZendeskTicketTool = tool({
-  name: 'createZendeskTicket',
-  description: 'Creates a Zendesk ticket with all collected application information. Call at completion, abandonment, or transfer to underwriting.',
+  name: "createZendeskTicket",
+  description:
+    "Creates a simulated Zendesk ticket by saving current application snapshot to a local JSON file via API. Call at completion or when abandoned.",
+  strict: true,
   parameters: z.object({
-    subject: z.string().describe('Ticket subject line including customer name and status'),
-    application_status: z.enum(['Completed', 'Abandoned', 'Transfer to Underwriting', 'In Progress']).describe('Overall application status'),
+    subject: z
+      .string()
+      .describe("Ticket subject line including customer name and status"),
+    transcript: z
+      .string()
+      .nullable()
+      .describe("Optional conversation transcript or context"),
+    customer_data: z
+      .any()
+      .nullable()
+      .describe("Additional customer details or metadata"),
+    application_status: z
+      .enum(["Completed", "Abandoned", "In Progress"])
+      .describe("Overall application status for the ticket"),
   }),
-  execute: async ({ subject, application_status }: { subject: string; application_status: string }) => {
-    const state = stateManager.getState();
+  execute: async (input) => {
+    const { subject, transcript, customer_data, application_status } = input;
 
-    // Generate ticket ID
-    const ticket_id = Math.floor(10000000 + Math.random() * 90000000).toString();
+    // 👉 Always ensure we have latest state if not provided
+    const stateSnapshot = customer_data ?? stateManager.getState();
 
-    try {
-      return await callToolAPI('createZendeskTicket', {
-        subject,
-        application_status,
-        customer_data: state,
-        ticket_id,
-      });
-    } catch {
-      // Fallback for demo
-      return {
-        success: true,
-        ticket_id,
-        message: `Zendesk ticket created: ${subject}`,
-        status: application_status,
-      };
+    // ✅ Build description
+    const descriptionParts: string[] = [];
+
+    descriptionParts.push(`**Application Status:** ${application_status}`);
+
+    if (transcript) {
+      descriptionParts.push(`**Transcript:**\n${transcript}`);
     }
+
+    if (stateSnapshot) {
+      descriptionParts.push(
+        `**Application State:**\n${JSON.stringify(stateSnapshot, null, 2)}`
+      );
+    }
+
+    const description = descriptionParts.join("\n\n");
+
+    // ✅ API expects ONLY subject + description
+    return await callToolAPI("tickets", {
+      subject,
+      description,
+    });
   },
 });
+
 
 // ============================================================================
 // CREATE AGENT
