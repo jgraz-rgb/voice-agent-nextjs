@@ -155,7 +155,7 @@ const stateManager = new StateManager();
 // TOOL API CLIENT HELPER
 // ============================================================================
 
-const TOOL_API_BASE_URL = 'http://localhost:8000';
+const TOOL_API_BASE_URL = 'https://feature-mltools.searchunify.com/bfsi-api/';
 
 async function callToolAPI(endpoint: string, data: any): Promise<any> {
   try {

@@ -306,7 +306,7 @@ function App({ welcomeMessage, imageUrl, WorkflowImage }) {
 
     // Send an initial 'hi' message to trigger the agent to greet the user
     if (shouldTriggerResponse) {
-      sendSimulatedUserMessage('hi!, I would like to renew my health insurance plan.');
+      sendSimulatedUserMessage('hi!');
     }
     return;
   }
