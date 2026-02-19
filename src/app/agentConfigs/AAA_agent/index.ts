@@ -595,23 +595,37 @@ const sendEmailTool = tool({
   name: 'sendEmail',
   description: 'Sends an email to the user (payment link or policy documents).',
   parameters: z.object({
-    to_address: z.string().describe('Email address'),
+    to_email: z.string().describe('Email address'),
     subject: z.string().describe('Email subject line'),
     body: z.string().describe('Email body content'),
   }),
-  execute: async ({ to_address, subject, body }: { to_address: string; subject: string; body: string }) => {
-    try {
-      return await callToolAPI('sendEmail', { to_address, subject, body });
-    } catch {
-      // Fallback for demo
-      return {
-        success: true,
-        message_id: `EMAIL_${Date.now()}`,
-        message: 'Email sent successfully',
-      };
-    }
+  execute: async ({
+    to_email,
+    subject,
+    body,
+    message
+  }: {
+    to_email: string;
+    subject: string;
+    body: string;
+    message: string; // Added message parameter for email template
+  }) => {
+    // 👇 Build dynamic message template
+    const message = `Thank you for applying for Kotak e-Invest Plus ULIP.
+Here are the details:
+
+${body}`;
+
+    // 👇 Call API with message field
+    return await callToolAPI("email_tools", "send_email", {
+      to_email,
+      subject,
+      body,       // still sent for DB storage
+      message,    // 👈 used by email template
+    });
   },
 });
+
 
 const confirmPaymentTool = tool({
   name: 'confirmPayment',
