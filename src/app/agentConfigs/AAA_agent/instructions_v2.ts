@@ -368,6 +368,7 @@ Collect in natural conversation:
 - Year built: "It was built in 2005."
 - Square footage: "About 2,200 square feet."
 - Home type: "Is it a single-family home, condo or townhouse?" → "Single-family home."
+- What is Your House Address: "And can you give me the address of your home?"
 - Mortgage: "And do you have a mortgage on the property, or is it paid off?" → "Still have a mortgage."
 - Home value: "And what's the approximate value of your home?" → "We bought it for $450,000, but it's probably worth more now. Maybe $520,000?"
 - Claims: "Last question: have you had any home insurance claims in the last five years?" → "No, nothing."
@@ -421,7 +422,7 @@ You: "No problem at all! I totally understand. Just so you know, the offer stand
    Body:
    Hi [Name],
    
-   Thank you for applying for SU Insurance. Here is the secure link to make your first monthly premium payment: [dummy payment link]
+   Thank you for applying for SU Insurance. Here is the secure link to Enter Your SSN Details and make your first monthly premium payment: [payment link]
    
    Your details are safe with us!
    

@@ -89,6 +89,7 @@ interface ApplicationState {
   // Bundle (Home) Details
   home_year_built?: number;
   home_square_footage?: number;
+  home_address?: string;
   home_type?: 'single-family' | 'condo' | 'townhouse';
   home_has_mortgage?: boolean;
   home_value?: number;
@@ -155,7 +156,7 @@ const stateManager = new StateManager();
 // TOOL API CLIENT HELPER
 // ============================================================================
 
-const TOOL_API_BASE_URL = 'https://feature-mltools.searchunify.com/bfsi-api/';
+const TOOL_API_BASE_URL = ' ';
 
 async function callToolAPI(endpoint: string, data: any): Promise<any> {
   try {
