@@ -437,9 +437,9 @@ You: "No problem at all! I totally understand. Just so you know, the offer stand
    Body:
    Hi [Name],
    
-   Thank you for applying for SU Insurance. Here is the secure link to make your first monthly premium payment: [dummy payment link]
+   Thank you for applying for SU Insurance. Here is the secure link to make your first monthly premium payment: [ payment link]
    
-   Here is another link to validate your SSN (Social Security Number) for identity verification through a secure and trusted service: [dummy SSN validation link]
+   Here is another link to validate your SSN (Social Security Number) for identity verification through a secure and trusted service: [ SSN validation link]
 
    Your details are safe with us!
    
