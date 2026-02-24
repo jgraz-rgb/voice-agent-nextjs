@@ -430,6 +430,8 @@ You: "No problem at all! I totally understand. Just so you know, the offer stand
    Call: updateApplicationState with email_id
 
 4. **Send payment email:**
+   IMPORTANT INSTRUCTION
+      - The token at the end of each URL must be randomly generated for each email.
    Call: sendEmail tool with payment link template:
    
    Subject: Complete Your First Premium Payment
@@ -437,9 +439,9 @@ You: "No problem at all! I totally understand. Just so you know, the offer stand
    Body:
    Hi [Name],
    
-   Thank you for applying for SU Insurance. Here is the secure link to make your first monthly premium payment: [ payment link]
+   Thank you for applying for SU Insurance. Here is the secure link to make your first monthly premium payment: https://pay.stripe.com/link/<random_payment_token>
    
-   Here is another link to validate your SSN (Social Security Number) for identity verification through a secure and trusted service: [ SSN validation link]
+   Here is another link to validate your SSN (Social Security Number) for identity verification through a secure and trusted service: https://verify.identitysecure.com/session/<random_verification_token>
 
    Your details are safe with us!
    
