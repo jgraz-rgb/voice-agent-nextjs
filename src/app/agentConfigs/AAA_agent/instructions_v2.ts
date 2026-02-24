@@ -430,7 +430,7 @@ You: "No problem at all! I totally understand. Just so you know, the offer stand
    Call: updateApplicationState with email_id
 
 4. **Send payment email:**
-   Call: sendEmail with payment link template:
+   Call: sendEmail tool with payment link template:
    
    Subject: Complete Your First Premium Payment
    
