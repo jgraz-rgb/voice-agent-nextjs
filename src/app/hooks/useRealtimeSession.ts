@@ -153,7 +153,8 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
         model: process.env.NEXT_PUBLIC_REALTIME_MODEL || 'gpt-realtime',
         config: {
           inputAudioTranscription: {
-            model: 'gpt-4o-mini-transcribe',
+            model: 'gpt-4o-transcribe',
+            language:"en"
           },
         },
         outputGuardrails: outputGuardrails ?? [],

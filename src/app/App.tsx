@@ -1,7 +1,7 @@
 "use client";
 import "@/app/lib/audioConstraintsPatch";
 import React, { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 
 import Image from "next/image";
@@ -30,21 +30,25 @@ import { customerServiceRetailCompanyName } from "@/app/agentConfigs/customerSer
 import { chatSupervisorCompanyName } from "@/app/agentConfigs/chatSupervisor";
 import { simpleHandoffScenario } from "@/app/agentConfigs/simpleHandoff";
 import kotakInsuranceScenario from "@/app/agentConfigs/kotakInsurance";
-
+import usHealthInsuranceScenario, { usHealthInsuranceCompanyName } from "@/app/agentConfigs/US_health_insurance";
+import aaaInsuranceScenario, { aaaInsuranceCompanyName } from "@/app/agentConfigs/AAA_agent";
 // Map used by connect logic for scenarios defined via the SDK.
 const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
   simpleHandoff: simpleHandoffScenario,
   customerServiceRetail: customerServiceRetailScenario,
   chatSupervisor: chatSupervisorScenario,
   kotakInsurance: kotakInsuranceScenario
+  usHealthInsurance: usHealthInsuranceScenario,
+  aaaInsurance: aaaInsuranceScenario,
 };
 
 import useAudioDownload from "./hooks/useAudioDownload";
 import { useHandleSessionHistory } from "./hooks/useHandleSessionHistory";
 import { initializeMCPClients } from "./agentConfigs/kotakInsurance/getTools";
 
-function App() {
+function App({ welcomeMessage, imageUrl, WorkflowImage }) {
   const searchParams = useSearchParams()!;
+  const pathname = usePathname();
 
   const {
     addTranscriptMessage,
@@ -107,13 +111,13 @@ function App() {
       return stored ? stored === 'true' : true;
     },
   );
-  
+
 
   // Initialize the recording hook.
   const { startRecording, stopRecording, downloadRecording } =
     useAudioDownload();
 
-    
+
 
   const sendClientEvent = (eventObj: any, eventNameSuffix = "") => {
     try {
@@ -126,22 +130,46 @@ function App() {
 
   useHandleSessionHistory();
 
+  const pathAgentConfigKey = React.useMemo(() => {
+    if (!pathname) return null;
+    if (pathname.startsWith("/auto")) return "aaaInsurance";
+    if (pathname.startsWith("/loan")) return "kotakInsurance";
+    if (pathname.startsWith("/health")) return "usHealthInsurance";
+    return null;
+  }, [pathname]);
+
+  const fallbackAgentConfigKey = pathAgentConfigKey ?? defaultAgentSetKey;
+
   useEffect(() => {
-    let finalAgentConfig = searchParams.get("agentConfig");
-    if (!finalAgentConfig || !allAgentSets[finalAgentConfig]) {
-      finalAgentConfig = defaultAgentSetKey;
+    const currentAgentConfig = searchParams.get("agentConfig");
+    const hasValidConfig =
+      typeof currentAgentConfig === "string" &&
+      Boolean(allAgentSets[currentAgentConfig]);
+
+    // Enforce the agent that matches the path when present, otherwise
+    // fall back to a valid query param or the default agent config.
+    const desiredAgentConfig: string =
+      pathAgentConfigKey ||
+      (hasValidConfig && currentAgentConfig) ||
+      fallbackAgentConfigKey;
+
+    const needsUpdate =
+      !hasValidConfig ||
+      (pathAgentConfigKey && currentAgentConfig !== pathAgentConfigKey);
+
+    if (needsUpdate) {
       const url = new URL(window.location.toString());
-      url.searchParams.set("agentConfig", finalAgentConfig);
+      url.searchParams.set("agentConfig", desiredAgentConfig);
       window.location.replace(url.toString());
       return;
     }
 
-    const agents = allAgentSets[finalAgentConfig];
+    const agents = allAgentSets[desiredAgentConfig];
     const agentKeyToUse = agents[0]?.name || "";
 
     setSelectedAgentName(agentKeyToUse);
     setSelectedAgentConfigSet(agents);
-  }, [searchParams]);
+  }, [searchParams, fallbackAgentConfigKey, pathAgentConfigKey]);
 
   useEffect(() => {
     if (selectedAgentName && sessionStatus === "DISCONNECTED") {
@@ -174,7 +202,7 @@ function App() {
 
   const fetchEphemeralKey = async (): Promise<string | null> => {
     logClientEvent({ url: "/session" }, "fetch_session_token_request");
-    const tokenResponse = await fetch("/api/session");
+    const tokenResponse = await fetch("/bfsi-agentic-suite/api/session");
     const data = await tokenResponse.json();
     logServerEvent(data, "fetch_session_token_response");
 
@@ -212,9 +240,15 @@ function App() {
 
         const companyName = agentSetKey === 'customerServiceRetail'
           ? customerServiceRetailCompanyName
-          : chatSupervisorCompanyName;
-        
-        const outputGuardrails = agentSetKey === 'kotakInsurance'
+          : agentSetKey === 'chatSupervisor'
+            ? chatSupervisorCompanyName
+            : agentSetKey === 'usHealthInsurance'
+              ? usHealthInsuranceCompanyName
+              : agentSetKey === 'aaaInsurance'
+                ? aaaInsuranceCompanyName
+                : 'Company';
+
+        const outputGuardrails = (agentSetKey === 'kotakInsurance' || agentSetKey === 'usHealthInsurance')
           ? []
           : [createModerationGuardrail(companyName)];
 
@@ -261,12 +295,12 @@ function App() {
     const turnDetection = isPTTActive
       ? null
       : {
-          type: 'server_vad',
-          threshold: 0.9,
-          prefix_padding_ms: 300,
-          silence_duration_ms: 500,
-          create_response: true,
-        };
+        type: 'server_vad',
+        threshold: 0.9,
+        prefix_padding_ms: 300,
+        silence_duration_ms: 500,
+        create_response: true,
+      };
 
     sendEvent({
       type: 'session.update',
@@ -277,7 +311,7 @@ function App() {
 
     // Send an initial 'hi' message to trigger the agent to greet the user
     if (shouldTriggerResponse) {
-      sendSimulatedUserMessage('hi <respond with an indian accent>');
+      sendSimulatedUserMessage('hi!');
     }
     return;
   }
@@ -432,15 +466,15 @@ function App() {
         >
           <div>
             <Image
-              src="https://upload.wikimedia.org/wikipedia/en/3/39/Kotak_Mahindra_Group_logo.svg"
-              alt="Kotak Logo"
+              src={imageUrl}
+              alt="Search Unify Logo"
               width={60}
               height={30}
               className="mr-2"
             />
           </div>
           <div>
-            Invest Now in Kotak e-Invest Plus Unit-Linked Insurance Plan
+            {welcomeMessage}
           </div>
         </div>
         {/* <div className="flex items-center">
@@ -509,7 +543,7 @@ function App() {
       <div className="flex flex-1 gap-2 px-2 overflow-hidden relative">
 
         <WorkflowSection
-        
+          WorkflowImage={WorkflowImage}
         />
 
         <Transcript
