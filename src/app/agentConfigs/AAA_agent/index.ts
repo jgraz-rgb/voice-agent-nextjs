@@ -68,6 +68,10 @@ interface ApplicationState {
   additional_drivers?: boolean;
   additional_driver_count?: number;
 
+  // Insurance Status Router (Stage 0.5)
+  is_first_time_buyer?: boolean;
+  listed_on_other_policy?: boolean;
+
   // Stage 3: Current Insurance
   has_current_insurance?: boolean;
   current_carrier?: string;
@@ -82,6 +86,8 @@ interface ApplicationState {
   collision?: boolean;
   roadside_assistance?: boolean;
   rental_reimbursement?: boolean;
+  uninsured_motorist_coverage?: boolean;
+  medical_payments_coverage?: boolean;
   anti_theft_device?: boolean;
   is_homeowner?: boolean;
   bundle_interested?: boolean;
@@ -377,12 +383,19 @@ const calculateQuoteTool = tool({
       multiplier *= 0.99;
     }
 
+    // No prior insurance multiplier for first-time buyers
+    if (state.is_first_time_buyer) {
+      multiplier *= 1.10;
+    }
+
     // Calculate risk-adjusted base
     let riskAdjustedBase = Math.round(basePremium * multiplier);
 
     // Add optional coverages
     if (state.roadside_assistance) riskAdjustedBase += 8;
     if (state.rental_reimbursement) riskAdjustedBase += 12;
+    if (state.uninsured_motorist_coverage) riskAdjustedBase += 10;
+    if (state.medical_payments_coverage) riskAdjustedBase += 8;
 
     // Calculate discounts
     const discounts: string[] = [];
@@ -490,9 +503,10 @@ const calculateInsuranceQuoteTool = tool({
     driver_age: z.number().describe('Driver age in years'),
     zip_code: z.string().describe('ZIP code'),
     driving_experience_years: z.number().describe('Years of driving experience'),
-    violation_count: z.number().describe('Number of violations in last 3 years'),
-    accident_count: z.number().describe('Number of accidents in last 3 years'),
+    violation_count: z.number().describe('Number of violations (last 3 years for existing customers, lifetime for first-time buyers)'),
+    accident_count: z.number().describe('Number of accidents (last 3 years for existing customers, lifetime for first-time buyers)'),
     annual_mileage: z.number().describe('Annual mileage'),
+    is_first_time_buyer: z.boolean().optional().nullable().describe('Whether the customer has never had car insurance before'),
 
     liability_level: z.enum(['15/30/5', '25/50/25', '50/100/50', '100/300/100', '250/500/100']).describe('Liability coverage level'),
     deductible: z.enum(['500', '1000', '2000']).describe('Deductible amount'),
@@ -500,6 +514,8 @@ const calculateInsuranceQuoteTool = tool({
     collision: z.boolean().describe('Include collision coverage'),
     roadside_assistance: z.boolean().describe('Include roadside assistance'),
     rental_reimbursement: z.boolean().describe('Include rental reimbursement'),
+    uninsured_motorist_coverage: z.boolean().optional().nullable().describe('Include uninsured/underinsured motorist coverage add-on ($10/month, offered to first-time buyers)'),
+    medical_payments_coverage: z.boolean().optional().nullable().describe('Include medical payments (MedPay) coverage add-on ($8/month, offered to first-time buyers)'),
 
     anti_theft_device: z.boolean().describe('Has anti-theft device'),
     defensive_driving_course: z.boolean().describe('Completed defensive driving course'),
@@ -531,6 +547,7 @@ const calculateInsuranceQuoteTool = tool({
       violation_count: params.violation_count,
       accident_count: params.accident_count,
       annual_mileage: params.annual_mileage,
+      is_first_time_buyer: params.is_first_time_buyer || false,
     };
 
     const coverage: CoverageSelections = {
@@ -540,6 +557,8 @@ const calculateInsuranceQuoteTool = tool({
       collision: params.collision,
       roadside_assistance: params.roadside_assistance,
       rental_reimbursement: params.rental_reimbursement,
+      uninsured_motorist_coverage: params.uninsured_motorist_coverage || false,
+      medical_payments_coverage: params.medical_payments_coverage || false,
     };
 
     const discounts: DiscountFlags = {

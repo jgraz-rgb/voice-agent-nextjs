@@ -13,6 +13,7 @@ export interface DriverProfile {
   violation_count: number;
   accident_count: number;
   annual_mileage: number;
+  is_first_time_buyer?: boolean;
 }
 
 export interface CoverageSelections {
@@ -22,6 +23,8 @@ export interface CoverageSelections {
   collision: boolean;
   roadside_assistance: boolean;
   rental_reimbursement: boolean;
+  uninsured_motorist_coverage?: boolean;
+  medical_payments_coverage?: boolean;
 }
 
 export interface DiscountFlags {
@@ -196,14 +199,18 @@ export function calculateAutoInsurancePremium(
                               driver.accident_count === 1 ? 1.12 :
                               driver.accident_count === 2 ? 1.25 : 1.40;
   
-  const combinedMultiplier = ageMultiplier * zipMultiplier * experienceMultiplier * 
-                              mileageMultiplier * violationMultiplier * accidentMultiplier;
+  const noPriorInsuranceMultiplier = driver.is_first_time_buyer ? 1.10 : 1.00;
+
+  const combinedMultiplier = ageMultiplier * zipMultiplier * experienceMultiplier *
+                              mileageMultiplier * violationMultiplier * accidentMultiplier * noPriorInsuranceMultiplier;
   
   const riskAdjustedBase = Math.round(baseTotal * combinedMultiplier);
   
   let optionalCoverages = 0;
   if (coverage.roadside_assistance) optionalCoverages += BASE_RATES.roadside_assistance;
   if (coverage.rental_reimbursement) optionalCoverages += BASE_RATES.rental_reimbursement;
+  if (coverage.uninsured_motorist_coverage) optionalCoverages += 10;
+  if (coverage.medical_payments_coverage) optionalCoverages += 8;
   
   const totalBeforeDiscounts = riskAdjustedBase + optionalCoverages;
   
