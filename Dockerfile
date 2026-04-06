@@ -37,6 +37,9 @@ COPY --from=builder /src/package.json ./package.json
 COPY --from=builder /src/node_modules ./node_modules
 COPY --from=builder /src/next.config.mjs ./next.config.mjs
 
+# Create data dir for runtime file persistence (zendesk tickets, session state)
+RUN mkdir -p /src/data && chown -R nextjs:nodejs /src/data
+
 USER nextjs
 EXPOSE 8005
 CMD ["npm", "run", "start"]
