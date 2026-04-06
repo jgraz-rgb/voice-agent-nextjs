@@ -158,9 +158,18 @@ export const useChatEngine = () => {
 
   const initialize = useCallback(async () => {
     await delay(500);
-    addBotMessage(
-      `Hello! I am <strong>InsureAssist</strong>, your personalised health insurance support agent. 🩺<br/><br/>I can assist you to:<ul><li>Get answers to your health insurance questions</li><li>Craft tailored sales pitches for specific policies</li><li>Provide side-by-side policy comparisons</li><li>Generate comprehensive policy summaries</li></ul>`
-    );
+  addBotMessage(
+    `Hello! I am <strong>InsureAssist</strong>, your personalised health insurance support agent.
+    <p>I have been trained on a comprehensive set of health insurance policy documents to assist you with accurate and contextual information.</p>
+    <p>I can assist you to:</p>
+    <ul>
+      <li>Get answers to questions related to specific health insurance policies</li>
+      <li>Craft tailored, persona-based sales pitches to accelerate customer onboarding</li>
+      <li>Provide detailed comparisons across policies to support informed decision-making</li>
+      <li>Generate concise or comprehensive summaries of policy benefits</li>
+    </ul>
+    <p><strong>Let’s get started!</strong></p>`
+  );
     setFlowState('select-state');
   }, [addBotMessage]);
 
@@ -230,13 +239,11 @@ export const useChatEngine = () => {
 
   const handleSummarizeSelect = useCallback(async (policy: string) => {
     setFlowContext((prev) => ({ ...prev, policy }));
-
+    setFlowState('completed');
     if (backendAvailable) {
       setIsTyping(true);
       await streamBotResponse('summarize', buildApiContext({ policy }));
     }
-
-    setFlowState('completed');
   }, [backendAvailable, streamBotResponse]);
 
   const handleUserInput = useCallback(async (text: string) => {

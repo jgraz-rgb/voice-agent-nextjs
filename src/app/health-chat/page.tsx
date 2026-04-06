@@ -107,7 +107,7 @@ export default function HealthChatPage() {
         {flowState === 'select-state' && (
           <BotBubble>
             <p className="text-sm">
-              Please select your state:
+              Please select the <strong>state</strong> where your insurance services are available to continue:
             </p>
             <InlineSelectWithConfirm
               options={['Florida', 'Texas']}
