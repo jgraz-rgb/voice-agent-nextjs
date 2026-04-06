@@ -13,6 +13,7 @@ export default function HealthChatPage() {
     messages,
     isTyping,
     actionsEnabled,
+    inputEnabled, // ✅ FIX: use this from hook
     flowState,
     initialize,
     handleStateSelection,
@@ -25,12 +26,16 @@ export default function HealthChatPage() {
     policies,
   } = useChatEngine();
 
-  const isFlowActive = !actionsEnabled && !['onboarding', 'select-state'].includes(flowState);
-  const isCompleted = flowState === 'completed';
-
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const initialized = useRef(false);
+
+  const isCompleted = flowState === 'completed';
+  const isFlowActive =
+    !actionsEnabled &&
+    !['onboarding', 'select-state'].includes(flowState);
+
+  /* ───────────────── INIT ───────────────── */
 
   useEffect(() => {
     if (!initialized.current) {
@@ -39,15 +44,21 @@ export default function HealthChatPage() {
     }
   }, [initialize]);
 
+  /* ───────────────── AUTO SCROLL ───────────────── */
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isTyping, flowState]);
 
+  /* ───────────────── INPUT HANDLERS ───────────────── */
+
   const handleSend = () => {
-    if (!input.trim()) return;
-    handleUserInput(input.trim());
+    const trimmed = input.trim();
+    if (!trimmed || !inputEnabled) return;
+
+    handleUserInput(trimmed);
     setInput('');
   };
 
@@ -58,98 +69,100 @@ export default function HealthChatPage() {
     }
   };
 
+  /* ───────────────── UI HELPERS ───────────────── */
+
+  const policyNames = policies.map((p) => p.name); // ✅ FIX: correct type for dropdown
+
+  /* ───────────────── RENDER ───────────────── */
+
   return (
     <div className="flex flex-col h-screen max-w-3xl mx-auto bg-background">
-      {/* Header */}
+
+      {/* HEADER */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-border bg-card">
         <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
           IA
         </div>
         <div>
-          <h1 className="text-base font-semibold text-foreground">InsureAssist</h1>
-          <p className="text-xs text-muted-foreground">AI Health Insurance Copilot</p>
+          <h1 className="text-base font-semibold text-foreground">
+            InsureAssist
+          </h1>
+          <p className="text-xs text-muted-foreground">
+            AI Health Insurance Copilot
+          </p>
         </div>
         <div className="ml-auto w-2 h-2 rounded-full bg-green-500" />
       </div>
 
-      {/* Chat area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-6 space-y-4">
+      {/* CHAT AREA */}
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto px-5 py-6 space-y-4"
+      >
         {messages.map((msg) => (
           <ChatMessage key={msg.id} message={msg} />
         ))}
 
-        {/* Inline state selector after onboarding */}
+        {/* STATE SELECT */}
         {flowState === 'select-state' && (
-          <div className="flex items-start gap-3 animate-fade-in">
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold shrink-0">
-              IA
-            </div>
-            <div className="chat-bubble-bot max-w-[75%]">
-              <p className="text-sm leading-relaxed">Please select the state where your insurance services are available to continue:</p>
-              <InlineSelectWithConfirm
-                options={['Florida', 'Texas']}
-                placeholder="Select a state"
-                onConfirm={handleStateSelection}
-              />
-            </div>
-          </div>
+          <BotBubble>
+            <p className="text-sm">
+              Please select your state:
+            </p>
+            <InlineSelectWithConfirm
+              options={['Florida', 'Texas']}
+              placeholder="Select a state"
+              onConfirm={handleStateSelection}
+            />
+          </BotBubble>
         )}
 
-        {/* Pitch policy selector */}
+        {/* PITCH SELECT */}
         {flowState === 'pitch-select-policy' && (
-          <div className="flex items-start gap-3 animate-fade-in">
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold shrink-0">
-              IA
-            </div>
-            <div className="chat-bubble-bot max-w-[75%]">
-              <p className="text-sm leading-relaxed">Absolutely! I'm here to help you create a personalized sales pitch that highlights the key benefits of a policy. Let's begin by selecting a policy from the options below.</p>
-              <InlineSelectWithConfirm
-                options={policies}
-                placeholder="Select a policy"
-                onConfirm={handlePolicySelect}
-              />
-            </div>
-          </div>
+          <BotBubble>
+            <p className="text-sm">
+              Select a policy for your pitch:
+            </p>
+            <InlineSelectWithConfirm
+              options={policyNames}
+              placeholder="Select a policy"
+              onConfirm={handlePolicySelect}
+            />
+          </BotBubble>
         )}
 
-        {/* Compare policy selector */}
+        {/* COMPARE SELECT */}
         {flowState === 'compare-select' && (
-          <div className="flex items-start gap-3 animate-fade-in">
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold shrink-0">
-              IA
-            </div>
-            <div className="chat-bubble-bot max-w-[75%]">
-              <p className="text-sm leading-relaxed">Great! I'm here to help you compare two insurance policies. Simply select the two policies, and I'll generate a clear, detailed comparison to support your decision.</p>
-              <DualInlineSelect
-                options1={policies}
-                options2={policies}
-                onConfirm={handleCompareSelect}
-              />
-            </div>
-          </div>
+          <BotBubble>
+            <p className="text-sm">
+              Select two policies to compare:
+            </p>
+            <DualInlineSelect
+              options1={policyNames}
+              options2={policyNames}
+              onConfirm={handleCompareSelect}
+            />
+          </BotBubble>
         )}
 
-        {/* Summarize policy selector */}
+        {/* SUMMARIZE SELECT */}
         {flowState === 'summarize-select' && (
-          <div className="flex items-start gap-3 animate-fade-in">
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold shrink-0">
-              IA
-            </div>
-            <div className="chat-bubble-bot max-w-[75%]">
-              <p className="text-sm leading-relaxed">Absolutely! I'm here to assist you summarize the benefits of any insurance policy. Please select the policy you're interested in from the options below.</p>
-              <InlineSelectWithConfirm
-                options={policies}
-                placeholder="Select a policy"
-                onConfirm={handleSummarizeSelect}
-              />
-            </div>
-          </div>
+          <BotBubble>
+            <p className="text-sm">
+              Select a policy to summarize:
+            </p>
+            <InlineSelectWithConfirm
+              options={policyNames}
+              placeholder="Select a policy"
+              onConfirm={handleSummarizeSelect}
+            />
+          </BotBubble>
         )}
 
         {isTyping && <TypingIndicator />}
       </div>
 
-      {/* Bottom region */}
+      {/* FOOTER */}
       <div className="border-t border-border bg-card px-5 py-3 space-y-3">
         <ActionTray
           onAction={handleAction}
@@ -158,23 +171,40 @@ export default function HealthChatPage() {
           onRefresh={resetChat}
           hideActions={isCompleted}
         />
+
         <div className="flex items-center gap-2">
           <input
-            type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type your message..."
-            className="flex-1 rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary disabled:opacity-40 disabled:cursor-not-allowed"
+            disabled={!inputEnabled} // ✅ FIX
+            className="flex-1 rounded-xl border px-4 py-2.5 text-sm focus:outline-none disabled:opacity-40"
           />
+
           <button
             onClick={handleSend}
-            disabled={!input.trim()}
-            className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            disabled={!input.trim() || !inputEnabled} // ✅ FIX
+            className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center disabled:opacity-40"
           >
             <Send className="w-4 h-4" />
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ───────────────── SMALL REUSABLE BOT BUBBLE ───────────────── */
+
+function BotBubble({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-3 animate-fade-in">
+      <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold shrink-0">
+        IA
+      </div>
+      <div className="chat-bubble-bot max-w-[75%] space-y-2">
+        {children}
       </div>
     </div>
   );

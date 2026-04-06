@@ -63,6 +63,8 @@ function App({ welcomeMessage, imageUrl, WorkflowImage }) {
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   // Ref to identify whether the latest agent switch came from an automatic handoff
   const handoffTriggeredRef = useRef(false);
+  // Cached snapshot of agent state — kept in sync via /api/state polling on connect
+  const agentStateRef = useRef<Record<string, unknown>>({});
 
   const sdkAudioElement = React.useMemo(() => {
     if (typeof window === 'undefined') return undefined;
@@ -264,7 +266,35 @@ function App({ welcomeMessage, imageUrl, WorkflowImage }) {
     }
   };
 
-  const disconnectFromRealtime = () => {
+  // Called only by the disconnect button — async is safe here
+  const createAbandonedZendeskTicket = async () => {
+    const agentSetKey = searchParams.get("agentConfig") || "";
+    if (agentSetKey !== "aaaInsurance") return;
+    if (sessionStatus !== "CONNECTED") return;
+
+    // Do a final fresh fetch to capture any state updated in the last few seconds
+    let stateSnapshot: Record<string, unknown> = agentStateRef.current;
+    try {
+      const res = await fetch("/bfsi-agentic-suite/api/state");
+      if (res.ok) stateSnapshot = await res.json();
+    } catch {}
+
+    const subject = `[Connection Closed] AAA Insurance Session Abandoned`;
+    const description =
+      `**Application Status:** Abandoned\n\n` +
+      `**Reason:** User disconnected or turned off mic\n\n` +
+      `**Timestamp:** ${new Date().toISOString()}\n\n` +
+      `**Application State:**\n${JSON.stringify(stateSnapshot, null, 2)}`;
+
+    fetch("https://bfsi.searchunify.com/bfsi-api/tickets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ subject, description }),
+    }).catch(() => {});
+  };
+
+  const disconnectFromRealtime = async () => {
+    await createAbandonedZendeskTicket();
     disconnect();
     setSessionStatus("DISCONNECTED");
     setIsPTTUserSpeaking(false);
@@ -449,6 +479,43 @@ function App({ welcomeMessage, imageUrl, WorkflowImage }) {
       stopRecording();
     };
   }, [sessionStatus]);
+
+  // Keep agentStateRef warm while connected so beforeunload can use it synchronously
+  useEffect(() => {
+    if (sessionStatus !== "CONNECTED") return;
+    const poll = async () => {
+      try {
+        const res = await fetch("/bfsi-agentic-suite/api/state");
+        if (res.ok) agentStateRef.current = await res.json();
+      } catch {}
+    };
+    poll(); // fetch immediately on connect
+    const interval = setInterval(poll, 5000); // refresh every 5s
+    return () => clearInterval(interval);
+  }, [sessionStatus]);
+
+  // Create an abandoned ticket if the user closes the tab or navigates away mid-session
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const agentSetKey = searchParams.get("agentConfig") || "";
+      if (agentSetKey !== "aaaInsurance" || sessionStatus !== "CONNECTED") return;
+
+      const subject = `[Connection Lost] AAA Insurance Session Abandoned`;
+      const description =
+        `**Application Status:** Abandoned\n\n` +
+        `**Reason:** User closed the tab or navigated away\n\n` +
+        `**Timestamp:** ${new Date().toISOString()}\n\n` +
+        `**Application State:**\n${JSON.stringify(agentStateRef.current, null, 2)}`;
+
+      // sendBeacon is the only reliable API during page unload
+      navigator.sendBeacon(
+        "https://bfsi.searchunify.com/bfsi-api/tickets",
+        new Blob([JSON.stringify({ subject, description })], { type: "application/json" })
+      );
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [sessionStatus, searchParams]);
 
   const agentSetKey = searchParams.get("agentConfig") || "default";
 

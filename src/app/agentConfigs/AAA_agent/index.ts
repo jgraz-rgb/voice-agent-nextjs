@@ -1,7 +1,5 @@
 import { RealtimeAgent, tool } from '@openai/agents/realtime';
 import { z } from 'zod';
-// import { promises as fs } from 'fs';
-import path from 'path';
 import { AAA_INSURANCE_INSTRUCTIONS } from './instructions';
 import { AAA_INSURANCE_INSTRUCTIONS_V2 } from './instructions_v2';
 import RAGDATA from './RAG.json';
@@ -162,7 +160,7 @@ const stateManager = new StateManager();
 // TOOL API CLIENT HELPER
 // ============================================================================
 
-const TOOL_API_BASE_URL = 'https://feature-mltools.searchunify.com/bfsi-api/';
+const TOOL_API_BASE_URL = 'https://bfsi.searchunify.com/bfsi-api/';
 async function callToolAPI(endpoint: string, data: any): Promise<any> {
   try {
     const response = await fetch(`${TOOL_API_BASE_URL}/${endpoint}`, {
@@ -286,7 +284,7 @@ const sendGeneralOTPTool = tool({
   }),
   execute: async ({ phone_number }: { phone_number: string }) => {
     try {
-      return await callToolAPI('sendGeneralOTP', { phone_number });
+      return await callToolAPI('send_otp', { phone_number });
     } catch {
       // Fallback for demo
       const otp_reference_id = `OTP_${Date.now()}`;
@@ -308,7 +306,7 @@ const verifyGeneralOTPTool = tool({
   }),
   execute: async ({ otp_reference_id, otp_code }: { otp_reference_id: string; otp_code: string }) => {
     try {
-      const result = await callToolAPI('verifyGeneralOTP', { otp_reference_id, otp_code });
+      const result = await callToolAPI('verify_otp', { otp_reference_id, otp_code });
       if (result.success) {
         stateManager.updateState({ otp_verified: true });
       }
@@ -701,6 +699,16 @@ const updateStateTool = tool({
     stateManager.updateState({
       [field_name]: field_value,
     });
+
+    // POST snapshot to API route (runs client-side, relative URL resolves correctly)
+    const snapshot = stateManager.getState();
+    console.log(`[SessionState] Updated "${field_name}" =`, field_value);
+    console.log('[SessionState] Full snapshot:', JSON.stringify(snapshot, null, 2));
+    fetch('/bfsi-agentic-suite/api/state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(snapshot),
+    }).catch(() => {});
 
     return {
       success: true,
