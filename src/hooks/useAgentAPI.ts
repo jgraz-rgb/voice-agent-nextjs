@@ -3,7 +3,7 @@
  * Supports both streaming (SSE) and non-streaming chat endpoints.
  */
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = "https://bfsi.searchunify.com/bfsi-api/";
 
 export interface APIMessage {
   role: "user" | "bot";
@@ -26,7 +26,7 @@ export async function streamChat(
   onToolStart?: (tool: string) => void,
   onToolEnd?: (tool: string) => void
 ): Promise<string> {
-  const response = await fetch(`${API_BASE}/chat/stream`, {
+  const response = await fetch(`${API_BASE}/health-chat/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -84,7 +84,7 @@ export async function streamChat(
  * Non-streaming chat — returns the full response at once.
  */
 export async function sendChat(payload: ChatPayload): Promise<string> {
-  const response = await fetch(`${API_BASE}/chat`, {
+  const response = await fetch(`${API_BASE}/health-chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
