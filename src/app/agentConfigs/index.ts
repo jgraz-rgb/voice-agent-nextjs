@@ -4,6 +4,7 @@ import { chatSupervisorScenario } from './chatSupervisor';
 import kotakInsuranceScenario from './kotakInsurance';
 import usHealthInsuranceScenario from './US_health_insurance';
 import aaaInsuranceScenario from './AAA_agent';
+import licHousingScenario from './LIC_housing';
 
 import type { RealtimeAgent } from '@openai/agents/realtime';
 
@@ -15,6 +16,7 @@ export const allAgentSets: Record<string, RealtimeAgent[]> = {
   kotakInsurance: kotakInsuranceScenario,
   usHealthInsurance: usHealthInsuranceScenario,
   aaaInsurance: aaaInsuranceScenario,
+  licHousing: licHousingScenario,
 };
 
 export const defaultAgentSetKey = 'aaaInsurance';
