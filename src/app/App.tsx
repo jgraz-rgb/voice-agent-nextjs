@@ -32,6 +32,7 @@ import { simpleHandoffScenario } from "@/app/agentConfigs/simpleHandoff";
 import kotakInsuranceScenario from "@/app/agentConfigs/kotakInsurance";
 import usHealthInsuranceScenario, { usHealthInsuranceCompanyName } from "@/app/agentConfigs/US_health_insurance";
 import aaaInsuranceScenario, { aaaInsuranceCompanyName } from "@/app/agentConfigs/AAA_agent";
+import licHousingScenario, { licHousingCompanyName } from "@/app/agentConfigs/LIC_housing";
 // Map used by connect logic for scenarios defined via the SDK.
 const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
   simpleHandoff: simpleHandoffScenario,
@@ -40,6 +41,7 @@ const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
   kotakInsurance: kotakInsuranceScenario,
   usHealthInsurance: usHealthInsuranceScenario,
   aaaInsurance: aaaInsuranceScenario,
+  licHousing: licHousingScenario,
 };
 
 import useAudioDownload from "./hooks/useAudioDownload";
@@ -136,6 +138,7 @@ function App({ welcomeMessage, imageUrl, WorkflowImage }) {
     if (pathname.startsWith("/auto")) return "aaaInsurance";
     if (pathname.startsWith("/loan")) return "kotakInsurance";
     if (pathname.startsWith("/health")) return "usHealthInsurance";
+    if (pathname.startsWith("/housing")) return "licHousing";
     return null;
   }, [pathname]);
 
@@ -243,9 +246,11 @@ function App({ welcomeMessage, imageUrl, WorkflowImage }) {
               ? usHealthInsuranceCompanyName
               : agentSetKey === 'aaaInsurance'
                 ? aaaInsuranceCompanyName
-                : 'Company';
+                : agentSetKey === 'licHousing'
+                  ? licHousingCompanyName
+                  : 'Company';
 
-        const outputGuardrails = (agentSetKey === 'kotakInsurance' || agentSetKey === 'usHealthInsurance')
+        const outputGuardrails = (agentSetKey === 'kotakInsurance' || agentSetKey === 'usHealthInsurance' || agentSetKey === 'licHousing')
           ? []
           : [createModerationGuardrail(companyName)];
 
