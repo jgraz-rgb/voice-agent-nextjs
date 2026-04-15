@@ -12,7 +12,7 @@
  * Run:  npx tsx tests/lic_housing_test_harness.ts
  */
 
-import { calculateLeadScore, type LeadScoringInput } from '../src/app/agentConfigs/LIC_housing/scoring';
+import { calculateLeadScore, type LeadScoringInput } from '../src/app/agentConfigs/LIC_multi_agent/scoring';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -209,7 +209,7 @@ function testHotLead() {
 
 function testWarmLead() {
   header('SCENARIO 2: WARM LEAD — Anita Desai (Bangalore, Whitefield)');
-  console.log('  Self-employed, exploring, family decision. Expected: WARM (45-74)');
+  console.log('  Self-employed, exploring, family decision. Expected: WARM (55-79)');
 
   const sim = createStateSim();
 
@@ -310,8 +310,8 @@ function testWarmLead() {
   assert(scoreResult.p3.score === 4, `P3 Loan Amount = ${scoreResult.p3.score} (expected 4 — ₹80L in sweet spot)`);
   assert(scoreResult.p4.score === 2, `P4 Decision = ${scoreResult.p4.score} (expected 2 — family approval)`);
   assert(scoreResult.p5.score === 3, `P5 Preference = ${scoreResult.p5.score} (expected 3 — comparing 3)`);
-  assert(scoreResult.total_score >= 45 && scoreResult.total_score < 75,
-    `Total ${scoreResult.total_score} is in WARM range (45-74)`);
+  assert(scoreResult.total_score >= 55 && scoreResult.total_score < 80,
+    `Total ${scoreResult.total_score} is in WARM range (55-79)`);
   assert(scoreResult.lead_category === 'WARM', `Category = ${scoreResult.lead_category} (expected WARM)`);
 
   const syncResult = sim.sync('WARM', 'completed');
@@ -325,7 +325,7 @@ function testWarmLead() {
 
 function testColdLead() {
   header('SCENARIO 3: COLD LEAD — Vikram Patel (Delhi)');
-  console.log('  Browsing, unclear income, finalized elsewhere. Expected: COLD (<45)');
+  console.log('  Browsing, unclear income, finalized elsewhere. Expected: COLD (<55)');
 
   const sim = createStateSim();
 
@@ -401,10 +401,10 @@ function testColdLead() {
   assert(scoreResult.p3.score === 1, `P3 Loan Amount = ${scoreResult.p3.score} (expected 1 — no data)`);
   assert(scoreResult.p4.score === 3, `P4 Decision = ${scoreResult.p4.score} (expected 3 — has employment, assumed primary/joint)`);
   assert(scoreResult.p5.score === 1, `P5 Preference = ${scoreResult.p5.score} (expected 1 — finalized elsewhere)`);
-  assert(scoreResult.total_score < 50,
-    `Total ${scoreResult.total_score} is low (COLD or low-WARM range)`);
-  assert(scoreResult.lead_category === 'COLD' || scoreResult.lead_category === 'WARM',
-    `Category = ${scoreResult.lead_category} (expected COLD or low-WARM)`);
+  assert(scoreResult.total_score < 55,
+    `Total ${scoreResult.total_score} is COLD (<55)`);
+  assert(scoreResult.lead_category === 'COLD',
+    `Category = ${scoreResult.lead_category} (expected COLD)`);
 
   const syncResult = sim.sync(scoreResult.lead_category, 'not_interested');
   assert(syncResult.success, `LeadSquared sync: ${syncResult.leadsquared_activity_id}`);
@@ -509,8 +509,8 @@ function testBoundaryScores() {
   assert(result.total_score <= 35, `All 1s (minimal input) → ${result.total_score} (expected ≤35, COLD)`);
   assert(result.lead_category === 'COLD', `Category: ${result.lead_category}`);
 
-  // Right at WARM/COLD boundary (45)
-  // P1=2(15) + P2=2(12.5) + P3=2(10) + P4=1(3.75) + P5=2(5) = 46.3 → WARM
+  // Near WARM/COLD boundary (55)
+  // P1=2(15) + P2=2(12.5) + P3=2(10) + P4=1(3.75) + P5=2(5) = 46.3 → COLD
   result = calculateLeadScore({
     property_stage: 'searching', loan_timeline_months: 10,
     employment_type: 'self-employed',
@@ -519,38 +519,176 @@ function testBoundaryScores() {
     lichfl_preference: 'psu banks',
   });
   console.log(`  Near WARM/COLD boundary: ${result.total_score} → ${result.lead_category}`);
-  assert(result.total_score >= 25 && result.total_score <= 100, `Score in valid range: ${result.total_score}`);
+  assert(result.total_score < 55, `Score ${result.total_score} is below WARM threshold (55)`);
+  assert(result.lead_category === 'COLD', `Category: ${result.lead_category} (expected COLD)`);
 
-  // Right at HOT/WARM boundary
-  // P1=3(22.5) + P2=3(18.75) + P3=3(15) + P4=3(11.25) + P5=3(7.5) = 75 → HOT
+  // At 75 — this is now WARM (not HOT) with updated thresholds
+  // P1=3(22.5) + P2=3(18.75) + P3=3(15) + P4=3(11.25) + P5=3(7.5) = 75 → WARM
   result = calculateLeadScore({
     property_stage: 'shortlisted', loan_timeline_months: 5,
     employment_type: 'self-employed', pan_number: 'ABCDE1234F', monthly_income_range: '1L',
     loan_amount_lakhs: 250, property_type: 'villa',
     lichfl_preference: 'comparing', competing_lenders: ['HDFC'],
   });
-  console.log(`  At HOT/WARM boundary: ${result.total_score} → ${result.lead_category}`);
+  console.log(`  At 75 (below HOT threshold): ${result.total_score} → ${result.lead_category}`);
   assert(result.total_score === 75, `Score at boundary = ${result.total_score} (expected 75)`);
-  assert(result.lead_category === 'HOT', `At 75 → ${result.lead_category} (expected HOT)`);
+  assert(result.lead_category === 'WARM', `At 75 → ${result.lead_category} (expected WARM, HOT starts at 80)`);
+
+  // Right at HOT boundary (80)
+  // P1=4(30) + P2=3(18.75) + P3=4(20) + P4=2(7.5) + P5=2(5) = 81.3 → HOT
+  result = calculateLeadScore({
+    property_stage: 'shortlisted', loan_timeline_months: 2,
+    employment_type: 'self-employed', pan_number: 'ABCDE1234F', monthly_income_range: '1.5L',
+    loan_amount_lakhs: 60, property_type: '2BHK',
+    decision_authority: 'family',
+    lichfl_preference: 'psu banks',
+  });
+  console.log(`  Just above HOT threshold: ${result.total_score} → ${result.lead_category}`);
+  assert(result.total_score >= 80, `Score ${result.total_score} is at/above HOT threshold (80)`);
+  assert(result.lead_category === 'HOT', `Category: ${result.lead_category} (expected HOT)`);
+}
+
+// ── SCENARIO 7: HELPER LLM DRY RUN — compare both scorers ────────────────
+
+async function testHelperLLMDryRun() {
+  const { scoreLeadWithHelper } = await import('../src/app/agentConfigs/LIC_multi_agent/helperScoring');
+
+  header('SCENARIO 7: HELPER LLM DRY RUN — Deterministic vs Helper Scorer');
+  console.log('  Using LIC_multi_agent scorers (updated thresholds: HOT≥80, WARM≥55)');
+  console.log('  Running the same 3 lead profiles through BOTH scorers');
+  console.log('  and comparing results side-by-side.\n');
+
+  const profiles: Array<{ name: string; state: Record<string, any>; expectedCategory: string }> = [
+    {
+      name: 'Rajesh Sharma (HOT)',
+      expectedCategory: 'HOT',
+      state: {
+        property_stage: 'shortlisted',
+        property_type: '2BHK',
+        property_cost_lakhs: 85,
+        loan_amount_lakhs: 67.5,
+        loan_timeline_months: 3,
+        employment_type: 'salaried',
+        employer_detail: 'IT company, Hinjewadi',
+        employment_tenure_years: 10,
+        monthly_income_range: '1.2 lakh',
+        pan_number: 'AAAPA1111A',
+        existing_emi_amount: 18000,
+        existing_emi_details: 'Car loan',
+        co_applicant: true,
+        co_applicant_relation: 'wife',
+        co_applicant_employment: 'school teacher',
+        lichfl_preference: 'comparing',
+        competing_lenders: ['HDFC', 'SBI'],
+      },
+    },
+    {
+      name: 'Anita Desai (WARM)',
+      expectedCategory: 'WARM',
+      state: {
+        property_stage: 'searching',
+        property_type: '3BHK',
+        property_cost_lakhs: 120,
+        loan_amount_lakhs: 80,
+        loan_timeline_months: 9,
+        employment_type: 'self-employed',
+        employer_detail: 'Interior design firm',
+        monthly_income_range: '2-2.5 lakh',
+        pan_number: 'BTTPD4567K',
+        existing_emi_amount: 25000,
+        co_applicant: false,
+        decision_authority: 'family — parents se discuss',
+        lichfl_preference: 'comparing',
+        competing_lenders: ['SBI', 'HDFC'],
+      },
+    },
+    {
+      name: 'Vikram Patel (COLD)',
+      expectedCategory: 'COLD',
+      state: {
+        property_stage: 'browsing',
+        property_type: '',
+        loan_timeline_months: 18,
+        employment_type: 'contract',
+        lichfl_preference: 'already finalized with SBI',
+        competing_lenders: ['SBI'],
+      },
+    },
+  ];
+
+  for (const profile of profiles) {
+    console.log(`\n  ── ${profile.name} ──`);
+
+    // Deterministic scorer (multi-agent version with updated thresholds)
+    const detResult = calculateLeadScore(profile.state as any);
+    console.log(`    DETERMINISTIC: ${detResult.total_score}/100 → ${detResult.lead_category}`);
+    console.log(`      P1=${detResult.p1.score} P2=${detResult.p2.score} P3=${detResult.p3.score} P4=${detResult.p4.score} P5=${detResult.p5.score}`);
+
+    // Helper LLM scorer
+    console.log(`    Calling helper LLM (gpt-4.1-mini)...`);
+    const helperResult = await scoreLeadWithHelper(profile.state);
+    console.log(`    HELPER LLM:    ${helperResult.total_score}/100 → ${helperResult.lead_category} (scored_by: ${helperResult.scored_by})`);
+    console.log(`      P1=${helperResult.p1_score} P2=${helperResult.p2_score} P3=${helperResult.p3_score} P4=${helperResult.p4_score} P5=${helperResult.p5_score}`);
+
+    // Compare
+    const scoreDiff = Math.abs(detResult.total_score - helperResult.total_score);
+    const categoryMatch = detResult.lead_category === helperResult.lead_category;
+
+    console.log(`    DIFF: ${scoreDiff} pts | Category match: ${categoryMatch}`);
+
+    // Evidence from helper
+    if (helperResult.scored_by === 'helper_llm') {
+      console.log(`    HELPER EVIDENCE:`);
+      for (const line of helperResult.scoring_evidence) {
+        console.log(`      ${line}`);
+      }
+    }
+
+    assert(helperResult.lead_category === profile.expectedCategory,
+      `Helper scored ${profile.name} as ${helperResult.lead_category} (expected ${profile.expectedCategory})`);
+    assert(categoryMatch,
+      `Both scorers agree on category: ${detResult.lead_category} vs ${helperResult.lead_category}`);
+    assert(scoreDiff <= 15,
+      `Score difference ${scoreDiff} pts is within tolerance (≤15 pts)`);
+    assert(helperResult.scored_by === 'helper_llm',
+      `Scored by helper LLM (not fallback): ${helperResult.scored_by}`);
+  }
 }
 
 // ── RUN ALL ─────────────────────────────────────────────────────────────────
 
-console.log('\n🏠 LIC Housing Finance — Lead Qualification Test Harness');
-console.log('  Testing full end-to-end flow across 6 scenarios\n');
+async function main() {
+  console.log('\n🏠 LIC Housing Finance — Lead Qualification Test Harness');
+  console.log('  Testing full end-to-end flow across 7 scenarios\n');
 
-testHotLead();
-testWarmLead();
-testColdLead();
-testPartialData();
-testPANValidation();
-testBoundaryScores();
+  // Deterministic tests (synchronous)
+  testHotLead();
+  testWarmLead();
+  testColdLead();
+  testPartialData();
+  testPANValidation();
+  testBoundaryScores();
 
-// Summary
-console.log(`\n${'═'.repeat(70)}`);
-console.log(`  RESULTS: ${passed} passed, ${failed} failed, ${passed + failed} total`);
-console.log('═'.repeat(70));
+  // Helper LLM dry run (async — requires OPENAI_API_KEY)
+  if (process.env.OPENAI_API_KEY) {
+    await testHelperLLMDryRun();
+  } else {
+    header('SCENARIO 7: HELPER LLM DRY RUN — SKIPPED');
+    console.log('  Set OPENAI_API_KEY env var to run the helper LLM dry run.');
+    console.log('  Deterministic scorer tests still ran above.');
+  }
 
-if (failed > 0) {
-  process.exit(1);
+  // Summary
+  console.log(`\n${'═'.repeat(70)}`);
+  console.log(`  RESULTS: ${passed} passed, ${failed} failed, ${passed + failed} total`);
+  console.log('═'.repeat(70));
+
+  if (failed > 0) {
+    process.exit(1);
+  }
 }
+
+main().catch((err) => {
+  console.error('Test harness failed:', err);
+  process.exit(1);
+});
