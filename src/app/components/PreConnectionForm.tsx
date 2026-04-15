@@ -82,7 +82,7 @@ const PreConnectionForm: React.FC<PreConnectionFormProps> = ({ isOpen, onSubmit 
         <DialogHeader>
           <DialogTitle className="text-xl">Housing Insurance Registration Form</DialogTitle>
           <DialogDescription>
-            Please Provide your details before connecting with our agent
+            All fields are mandatory
           </DialogDescription>
         </DialogHeader>
 
@@ -165,6 +165,14 @@ const PreConnectionForm: React.FC<PreConnectionFormProps> = ({ isOpen, onSubmit 
               size="lg"
               className="w-full text-white font-semibold"
               style={{ backgroundColor: 'rgb(0, 82, 156)' }}
+              disabled={
+                !firstName.trim() ||
+                !lastName.trim() ||
+                !phoneNumber.trim() ||
+                !propertyLocation.trim() ||
+                !areaOffice.trim() ||
+                !consentChecked
+              }
             >
               Talk to Agent
             </Button>
