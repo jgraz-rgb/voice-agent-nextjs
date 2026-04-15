@@ -3,9 +3,9 @@ import LICSalesAppPage from './LICSalesAppPage';
 export default function LICPage() {
   return (
     <LICSalesAppPage
-      welcomeMessage="Welcome to SU Insurance — LIC Sales Agent"
+      welcomeMessage="SearchUnify's Voice-based AI Lead Qualification Agentic Solution"
       imageUrl="./su-logo.svg"
-      WorkflowImage="/workflow-auto-insurance-usa.png"
+      WorkflowImage="/Qualification_Agentic_Solution.png"
     />
   );
 }

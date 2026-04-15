@@ -200,11 +200,11 @@ export function calculateLeadScore(state: LeadScoringInput): LeadScoreResult {
   let routing: string;
   let sla: string;
 
-  if (total_score >= 75) {
+  if (total_score >= 80) {
     lead_category = 'HOT';
     routing = 'FoS Agent - Immediate';
     sla = 'Callback within 15 minutes';
-  } else if (total_score >= 45) {
+  } else if (total_score >= 55) {
     lead_category = 'WARM';
     routing = 'FoS Agent - Scheduled';
     sla = 'Callback within 2 hours';

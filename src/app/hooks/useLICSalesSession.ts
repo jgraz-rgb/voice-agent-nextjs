@@ -440,7 +440,7 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
           // Input audio transcription still needed so we can hear the user
           inputAudioTranscription: {
             model: 'gpt-4o-transcribe',
-            language: 'en',
+            language: 'hi',
           },
         },
         outputGuardrails: outputGuardrails ?? [],
