@@ -282,7 +282,7 @@ function App({ welcomeMessage, imageUrl, WorkflowImage }) {
     const subject = `[Connection Closed] AAA Insurance Session Abandoned`;
     const description =
       `**Application Status:** Abandoned\n\n` +
-      `**Reason:** User disconnected or turned off mic\n\n` +
+      `**Reason:** User disconnected or ended the call\n\n` +
       `**Timestamp:** ${new Date().toISOString()}\n\n` +
       `**Application State:**\n${JSON.stringify(stateSnapshot, null, 2)}`;
 

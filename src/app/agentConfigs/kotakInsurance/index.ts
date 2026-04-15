@@ -749,9 +749,11 @@ const createZendeskTicketTool = tool({
 
     const description = descriptionParts.join("\n\n");
     // ✅ Call external tool API (with description only)
+    
     return await callToolAPI("zendesk", "tickets", {
       subject,
       description,
+
 
     });
   },

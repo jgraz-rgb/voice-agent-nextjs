@@ -131,19 +131,21 @@ export function useHandleSessionHistory() {
   function handleTranscriptionDelta(item: any) {
     const itemId = item.item_id;
     const deltaText = item.delta || "";
+    console.log('[handleTranscriptionDelta] itemId:', itemId, '| delta:', JSON.stringify(deltaText));
     if (itemId) {
       updateTranscriptMessage(itemId, deltaText, true);
     }
   }
 
   function handleTranscriptionCompleted(item: any) {
-    // History updates don't reliably end in a completed item, 
+    // History updates don't reliably end in a completed item,
     // so we need to handle finishing up when the transcription is completed.
     const itemId = item.item_id;
     const finalTranscript =
         !item.transcript || item.transcript === "\n"
         ? "[inaudible]"
         : item.transcript;
+    console.log('[handleTranscriptionCompleted] itemId:', itemId, '| raw transcript:', JSON.stringify(item.transcript), '| final:', JSON.stringify(finalTranscript));
     if (itemId) {
       updateTranscriptMessage(itemId, finalTranscript, false);
       // Use the ref to get the latest transcriptItems

@@ -18,6 +18,26 @@ export async function POST(request: Request) {
   }
 }
 
+/** PATCH — merge partial fields into existing state without overwriting the whole document */
+export async function PATCH(request: Request) {
+  try {
+    const partial = await request.json();
+    await fs.mkdir(DATA_DIR, { recursive: true });
+    let existing: Record<string, unknown> = {};
+    try {
+      const data = await fs.readFile(STATE_PATH, "utf-8");
+      existing = JSON.parse(data);
+    } catch { /* no existing file is fine */ }
+    const merged = { ...existing, ...partial };
+    await fs.writeFile(STATE_PATH, JSON.stringify(merged, null, 2), "utf-8");
+    console.log("[/api/state PATCH] State merged:", JSON.stringify(partial, null, 2));
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("[/api/state PATCH] Error merging state:", error);
+    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+  }
+}
+
 export async function GET() {
   try {
     const data = await fs.readFile(STATE_PATH, "utf-8");

@@ -32,7 +32,7 @@ export async function runGuardrailClassifier(
     },
   ];
 
-  const response = await fetch('/api/responses', {
+  const response = await fetch('/bfsi-agentic-suite/api/responses', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

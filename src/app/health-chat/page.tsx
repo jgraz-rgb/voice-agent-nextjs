@@ -107,7 +107,7 @@ export default function HealthChatPage() {
         {flowState === 'select-state' && (
           <BotBubble>
             <p className="text-sm">
-              Please select the <strong>state</strong> where your insurance services are available to continue:
+                Please select the <strong>state</strong> where your insurance services are available to continue:
             </p>
             <InlineSelectWithConfirm
               options={['Florida', 'Texas']}
@@ -163,7 +163,7 @@ export default function HealthChatPage() {
       </div>
 
       {/* FOOTER */}
-      <div className="border-t border-border bg-card px-5 py-3 space-y-3">
+      <div className="border-t border-border bg-card px-5 py-3 space-y-3 mb-[2rem]">
         <ActionTray
           onAction={handleAction}
           disabled={!actionsEnabled}
