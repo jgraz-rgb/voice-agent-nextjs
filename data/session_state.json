@@ -1,7 +1,8 @@
 {
-  "current_phase": 0,
-  "current_field": "greeting",
-  "conversation_transcript": [],
-  "call_status": "in_progress",
-  "call_disposition": "dropped"
+  "first_name": "Damandeep",
+  "last_name": "Singh",
+  "phone_number": "+917837982793",
+  "property_location": "Patiala",
+  "area_office": "Leela Bhawan",
+  "call_start_time": "2026-04-15T12:04:18.173Z"
 }

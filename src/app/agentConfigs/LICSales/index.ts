@@ -228,6 +228,8 @@ export function formatZendeskDescription(
 
   const qualSummary = [
     `\nQualification Summary`,
+    `Mobile number : ${fmt(state.phone_number)}`,
+    `Preferred area office : ${fmt(state.preferred_area_office)}`,
     `Property stage : ${fmt(state.property_stage)}`,
     `Property location : ${fmt(state.property_location_detail || state.property_location)}`,
     `Loan requirement timeline : ${state.loan_timeline_months != null ? `${state.loan_timeline_months} months` : 'N/A'}`,
@@ -311,9 +313,9 @@ const updateLeadStateTool = tool({
     console.log(`[LeadState] Updated "${field_name}" =`, parsedValue);
     console.log('[LeadState] Full snapshot:', JSON.stringify(snapshot, null, 2));
     fetch('/bfsi-agentic-suite/api/state', {
-      method: 'POST',
+      method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(snapshot),
+      body: JSON.stringify({ [field_name]: parsedValue }),
     }).catch(() => {});
 
     return {
@@ -325,9 +327,23 @@ const updateLeadStateTool = tool({
 
 const getLeadStateTool = tool({
   name: 'getLeadState',
-  description: 'Retrieves the current lead qualification state. Use this to check what information has been collected so far.',
+  description: 'Retrieves the current lead qualification state. Use this to check what information has been collected so far, including pre-collected lead info like first_name, last_name, phone_number, property_location, and area_office.',
   parameters: z.object({}),
   execute: async () => {
+    // Merge persisted state (which contains pre-collected lead info from the
+    // pre-connection form) into the in-memory stateManager so the agent can
+    // see first_name, last_name, phone_number, property_location, area_office.
+    try {
+      const res = await fetch('/bfsi-agentic-suite/api/state');
+      if (res.ok) {
+        const persisted = await res.json();
+        if (persisted && typeof persisted === 'object') {
+          stateManager.updateState(persisted as Partial<LeadQualificationState>);
+        }
+      }
+    } catch {
+      // If the fetch fails, fall back to whatever is already in stateManager
+    }
     return stateManager.getState();
   },
 });

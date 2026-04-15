@@ -32,11 +32,18 @@ interface LICSalesAppProps {
   welcomeMessage?: string;
   imageUrl?: string;
   WorkflowImage?: string;
+  leadInfo: {
+    firstName: string;
+    lastName: string;
+    phoneNumber: string;
+    propertyLocation: string;
+    areaOffice: string;
+  };
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-function LICSalesApp({ welcomeMessage, imageUrl, WorkflowImage }: LICSalesAppProps) {
+function LICSalesApp({ welcomeMessage, imageUrl, WorkflowImage, leadInfo }: LICSalesAppProps) {
 
   const { addTranscriptMessage, addTranscriptBreadcrumb } = useTranscript();
   const { logClientEvent, logServerEvent } = useEvent();
@@ -102,6 +109,23 @@ function LICSalesApp({ welcomeMessage, imageUrl, WorkflowImage }: LICSalesAppPro
     setSessionStatus('CONNECTING');
 
     try {
+      // Store lead info in session state BEFORE connecting so the agent has it on first response
+      if (leadInfo) {
+        await fetch('/bfsi-agentic-suite/api/state', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            first_name: leadInfo.firstName,
+            last_name: leadInfo.lastName,
+            phone_number: leadInfo.phoneNumber,
+            property_location: leadInfo.propertyLocation,
+            area_office: leadInfo.areaOffice,
+          }),
+        }).catch((err) => {
+          console.error('Failed to store lead info:', err);
+        });
+      }
+
       const EPHEMERAL_KEY = await fetchEphemeralKey();
       if (!EPHEMERAL_KEY) return;
 
@@ -183,9 +207,9 @@ function LICSalesApp({ welcomeMessage, imageUrl, WorkflowImage }: LICSalesAppPro
       ? null
       : {
           type: 'server_vad',
-          threshold: 0.95,       // higher = less sensitive, won't trigger on background noise
-          prefix_padding_ms: 500,  // more padding before speech is confirmed
-          silence_duration_ms: 800, // wait longer after silence before cutting the turn
+          threshold: 0.6,
+          prefix_padding_ms: 300,
+          silence_duration_ms: 600,
           create_response: true,
         };
 

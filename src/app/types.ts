@@ -146,3 +146,11 @@ export const GuardrailOutputZod = z.object({
 });
 
 export type GuardrailOutput = z.infer<typeof GuardrailOutputZod>;
+
+export interface LeadInfo {
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  propertyLocation: string;
+  areaOffice: string;
+}

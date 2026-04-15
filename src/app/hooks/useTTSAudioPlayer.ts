@@ -22,8 +22,9 @@ import { useRef, useCallback, useEffect } from 'react';
 const OVERLAP_S = 0.05; // 50 ms overlap / pre-schedule window
 
 export interface TTSAudioPlayerHandle {
-  /** Feed a base64-encoded audio chunk received from the TTS WebSocket. */
-  enqueue: (base64Audio: string, mimeType?: string, sampleRate?: number) => void;
+  /** Feed a base64-encoded audio chunk received from the TTS WebSocket.
+   *  onStart fires at the moment this chunk's audio begins playing. */
+  enqueue: (base64Audio: string, mimeType?: string, sampleRate?: number, onStart?: () => void) => Promise<void>;
   /** Stop all playback immediately and clear the queue. */
   stop: () => void;
   /** Pause / resume playback (soft mute). */
@@ -55,7 +56,7 @@ export function useTTSAudioPlayer(): TTSAudioPlayerHandle {
     return ctxRef.current;
   }, []);
 
-  const enqueue = useCallback(async (base64Audio: string, mimeType = 'audio/mpeg', sampleRate = 22050) => {
+  const enqueue = useCallback(async (base64Audio: string, mimeType = 'audio/mpeg', sampleRate = 22050, onStart?: () => void) => {
     if (!base64Audio) return;
 
     // Decode base64 → ArrayBuffer
@@ -113,6 +114,12 @@ export function useTTSAudioPlayer(): TTSAudioPlayerHandle {
     source.connect(gainRef.current!);
     source.start(startAt);
 
+    // Fire onStart at the exact moment this chunk begins playing.
+    if (onStart) {
+      const delayMs = Math.max(0, (startAt - ctx.currentTime) * 1000);
+      setTimeout(onStart, delayMs);
+    }
+
     // Track active nodes so we can stop them on demand.
     activeNodesRef.current.push(source);
     source.onended = () => {
@@ -130,6 +137,11 @@ export function useTTSAudioPlayer(): TTSAudioPlayerHandle {
     });
     activeNodesRef.current = [];
     nextStartRef.current = 0;
+    // Suspend the AudioContext so any chunk that slips through after stop()
+    // cannot produce audible output until the next enqueue resumes it.
+    if (ctxRef.current && ctxRef.current.state === 'running') {
+      ctxRef.current.suspend().catch(() => {});
+    }
   }, []);
 
   const setMuted = useCallback((muted: boolean) => {
