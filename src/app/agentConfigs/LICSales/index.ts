@@ -66,6 +66,7 @@ interface LeadQualificationState {
   call_status?: 'in_progress' | 'completed' | 'callback_requested' | 'not_interested' | 'dropped' | 'abusive';
   call_start_time?: string;
   call_end_time?: string;
+  zendesk_ticket_created?: boolean;
 }
 
 // ============================================================================
@@ -597,6 +598,22 @@ const createZendeskTicketTool = tool({
   execute: async (input) => {
     void input; // parameters kept for agent schema compatibility
     const state = stateManager.getState();
+
+    // ── Duplicate-ticket guard ──────────────────────────────────────────────
+    // The agent may call createZendeskTicket twice (once at call completion and
+    // again on disconnect). Enforce idempotency here so only one ticket is ever
+    // created per session, regardless of how many times the tool is invoked.
+    if (state.zendesk_ticket_created) {
+      console.log('[Zendesk] Ticket already created for this session — skipping duplicate call.');
+      return {
+        success: true,
+        skipped: true,
+        message: 'Ticket already created for this session.',
+      };
+    }
+
+    // Mark as created immediately to prevent any concurrent duplicate call
+    stateManager.updateState({ zendesk_ticket_created: true });
 
     // Auto-calculate score if not already done (guard against agent skipping calculateLeadScore)
     if (state.total_score == null) {

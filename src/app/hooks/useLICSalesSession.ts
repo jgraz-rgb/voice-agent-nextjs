@@ -13,9 +13,15 @@ import { useTTSAudioPlayer } from './useTTSAudioPlayer';
 import { SessionStatus } from '../types';
 
 const LIC_TTS_API_URL = '/bfsi-agentic-suite/api/lic/tts';
-const TTS_CHUNK_MIN_CHARS = 40;
-const TTS_FORCE_FLUSH_CHARS = 80;
-const TTS_BOUNDARY_REGEX = /[,.;:!?।]/;
+// ── TTS chunking thresholds ────────────────────────────────────────────────
+// Chunks are flushed at sentence boundaries (।?!) first, then at clause
+// boundaries (,.;:) only when the chunk is long enough that splitting there
+// sounds natural rather than abrupt.
+const TTS_SENTENCE_MIN_CHARS = 60;   // flush at ।?! once this length is reached
+const TTS_CLAUSE_MIN_CHARS   = 100;  // flush at ,.;: only after this length
+const TTS_FORCE_FLUSH_CHARS  = 180;  // hard cap — flush wherever we are
+const TTS_SENTENCE_BOUNDARY_REGEX = /[।?!]/;
+const TTS_CLAUSE_BOUNDARY_REGEX   = /[,.;:]/;
 const MIC_VAD_THRESHOLD = 0.6;
 const MIC_PREFIX_PADDING_MS = 300;
 const MIC_SILENCE_DURATION_MS = 600;
@@ -28,10 +34,42 @@ const MIC_SILENCE_DURATION_MS = 600;
  */
 function normaliseTTSText(text: string): string {
   return text
+    // ── Abbreviation pronunciation ──────────────────────────────────────────
     .replace(/\bLICHFL\b/g, 'एल आई सी एच एफ एल')
     .replace(/\bLIC\b/g, 'एल आई सी')
-    .replace(/\*\*/g, '')
-    .replace(/\*/g, '');
+
+    // ── Markdown formatting ─────────────────────────────────────────────────
+    .replace(/\*\*\*(.+?)\*\*\*/g, '$1')   // bold+italic ***text***
+    .replace(/\*\*(.+?)\*\*/g, '$1')        // bold **text**
+    .replace(/\*(.+?)\*/g, '$1')            // italic *text*
+    .replace(/_{2}(.+?)_{2}/g, '$1')        // __underline__
+    .replace(/_(.+?)_/g, '$1')              // _italic_
+    .replace(/~~(.+?)~~/g, '$1')            // ~~strikethrough~~
+    .replace(/`{3}[\s\S]*?`{3}/g, '')       // ```code blocks```
+    .replace(/`([^`]+)`/g, '$1')            // `inline code`
+    .replace(/#{1,6}\s*/g, '')              // ## headings
+    .replace(/^\s*[-*+]\s+/gm, '')         // - bullet points
+    .replace(/^\s*\d+\.\s+/gm, '')         // 1. numbered lists
+    .replace(/^\s*>\s*/gm, '')              // > blockquotes
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // [link text](url) → link text
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1') // ![alt](img) → alt text
+    .replace(/\|/g, ' ')                    // table pipe characters
+
+    // ── Whitespace and escape sequences ─────────────────────────────────────
+    .replace(/\\n/g, ' ')                   // literal \n escape sequences
+    .replace(/\\t/g, ' ')                   // literal \t escape sequences
+    .replace(/\r\n|\r|\n/g, ' ')            // all real newline variants
+    .replace(/\t/g, ' ')                    // real tabs
+
+    // ── Punctuation noise ────────────────────────────────────────────────────
+    .replace(/\s*---+\s*/g, ', ')           // --- horizontal rules → pause
+    .replace(/\s*===+\s*/g, ' ')            // === dividers
+    .replace(/[<>{}[\]\\^~]/g, ' ')        // stray bracket/symbol noise
+    .replace(/\.{3,}/g, '...')              // normalize excessive ellipsis
+
+    // ── Collapse whitespace ──────────────────────────────────────────────────
+    .replace(/ {2,}/g, ' ')
+    .trim();
 }
 
 function mergeDeltaWithoutOverlap(existing: string, delta: string): string {
@@ -231,9 +269,16 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
         return;
       }
       const boundaryChar = current[current.length - 1];
+      const atSentenceBoundary = TTS_SENTENCE_BOUNDARY_REGEX.test(boundaryChar);
+      const atClauseBoundary   = TTS_CLAUSE_BOUNDARY_REGEX.test(boundaryChar);
       const shouldFlush =
         force ||
-        (trimmed.length >= TTS_CHUNK_MIN_CHARS && TTS_BOUNDARY_REGEX.test(boundaryChar)) ||
+        // Prefer flushing at full sentence endings (।?!) with a lower length bar
+        (trimmed.length >= TTS_SENTENCE_MIN_CHARS && atSentenceBoundary) ||
+        // Only split at clause boundaries (,.;:) once the chunk is long enough
+        // that the cut sounds natural rather than mid-thought
+        (trimmed.length >= TTS_CLAUSE_MIN_CHARS && atClauseBoundary) ||
+        // Hard cap — flush wherever we are to prevent unbounded buffering
         trimmed.length >= TTS_FORCE_FLUSH_CHARS;
       if (!shouldFlush) return;
 
