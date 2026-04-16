@@ -16,7 +16,7 @@ import { LeadInfo } from '@/app/types';
 const ALLOWED_LEADS = [
   { name: 'Arjun Kumar', mobile: 8197162904, AreaOffice: 'Koramangala', propertyLocation: 'Bangalore' },
   { name: 'Arvind Shekhar', mobile: 7837678234, AreaOffice: 'Zirakpur', propertyLocation: 'Mohali' },
-  { name: 'Vikas Singh', mobile: 7092678120, AreaOffice: 'Andheri East', propertyLocation: 'Mumbai' }, 
+  { name: 'Vikas Singh', mobile: 7092678120, AreaOffice: 'HITEC City', propertyLocation: 'Hyderabad' }, 
   { name: 'Devesh Dixit', mobile: 7820190872, AreaOffice: 'Andheri East', propertyLocation: 'Mumbai' },
   { name: 'Rahul Ved', mobile: 6235067123, AreaOffice: 'Greater Kailash', propertyLocation: 'Delhi' },
 ];

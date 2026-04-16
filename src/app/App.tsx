@@ -32,7 +32,7 @@ import { simpleHandoffScenario } from "@/app/agentConfigs/simpleHandoff";
 import kotakInsuranceScenario from "@/app/agentConfigs/kotakInsurance";
 import usHealthInsuranceScenario, { usHealthInsuranceCompanyName } from "@/app/agentConfigs/US_health_insurance";
 import aaaInsuranceScenario, { aaaInsuranceCompanyName } from "@/app/agentConfigs/AAA_agent";
-import licHousingScenario, { licHousingCompanyName } from "@/app/agentConfigs/LIC_housing";
+import licSalesScenario, { licHousingCompanyName as licSalesCompanyName } from "@/app/agentConfigs/LICSales";
 // Map used by connect logic for scenarios defined via the SDK.
 const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
   simpleHandoff: simpleHandoffScenario,
@@ -41,7 +41,7 @@ const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
   kotakInsurance: kotakInsuranceScenario,
   usHealthInsurance: usHealthInsuranceScenario,
   aaaInsurance: aaaInsuranceScenario,
-  licHousing: licHousingScenario,
+  licSales: licSalesScenario,
 };
 
 import useAudioDownload from "./hooks/useAudioDownload";
@@ -138,7 +138,7 @@ function App({ welcomeMessage, imageUrl, WorkflowImage }) {
     if (pathname.startsWith("/auto")) return "aaaInsurance";
     if (pathname.startsWith("/loan")) return "kotakInsurance";
     if (pathname.startsWith("/health")) return "usHealthInsurance";
-    if (pathname.startsWith("/housing")) return "licHousing";
+    if (pathname.startsWith("/lic")) return "licSales";
     return null;
   }, [pathname]);
 
@@ -246,11 +246,11 @@ function App({ welcomeMessage, imageUrl, WorkflowImage }) {
               ? usHealthInsuranceCompanyName
               : agentSetKey === 'aaaInsurance'
                 ? aaaInsuranceCompanyName
-                : agentSetKey === 'licHousing'
-                  ? licHousingCompanyName
-                  : 'Company';
+                  : agentSetKey === 'licSales'
+                    ? licSalesCompanyName
+                    : 'Company';
 
-        const outputGuardrails = (agentSetKey === 'kotakInsurance' || agentSetKey === 'usHealthInsurance' || agentSetKey === 'licHousing')
+        const outputGuardrails = (agentSetKey === 'kotakInsurance' || agentSetKey === 'usHealthInsurance' || agentSetKey === 'licHousing' || agentSetKey === 'licSales')
           ? []
           : [createModerationGuardrail(companyName)];
 
@@ -644,3 +644,4 @@ function App({ welcomeMessage, imageUrl, WorkflowImage }) {
 }
 
 export default App;
+

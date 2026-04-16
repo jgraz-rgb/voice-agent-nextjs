@@ -88,14 +88,17 @@ export function scoreP2_Eligibility(state: LeadScoringInput): ParameterScore {
   const hasCoApplicant = state.co_applicant === true;
 
   if (emp.includes('salaried') || emp.includes('salary')) {
-    let score = 3;
     const parts: string[] = ['Salaried'];
     if (tenure >= 3) { parts.push(`${tenure}yr tenure`); }
-    if (hasPAN) { parts.push('PAN provided'); }
+    if (hasPAN) { parts.push('PAN provided'); } else { parts.push('PAN not provided'); }
     if (hasIncome) { parts.push(`income: ${state.monthly_income_range}`); }
     if (hasCoApplicant) { parts.push('co-applicant available'); }
-    if (hasPAN && tenure >= 2 && emi < 50000) { score = 4; }
-    return { score, evidence: parts.join(', ') };
+    // Score 4: all green flags — PAN + stable tenure + manageable EMI
+    if (hasPAN && tenure >= 2 && emi < 50000) return { score: 4, evidence: parts.join(', ') };
+    // Score 3: PAN provided, or good tenure + low EMI, but not all flags
+    if (hasPAN || (tenure >= 2 && emi < 50000)) return { score: 3, evidence: parts.join(', ') };
+    // Score 2: salaried but no PAN and weak tenure or high EMI
+    return { score: 2, evidence: parts.join(', ') };
   }
   if (emp.includes('self') || emp.includes('business') || emp.includes('freelance')) {
     if (hasPAN && hasIncome) return { score: 3, evidence: 'Self-employed with income proof and PAN' };

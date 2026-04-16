@@ -21,10 +21,10 @@ P1: Purchase Intent & Timeline (weight 30%)
   1 = Browsing only — no commitment, no timeline
 
 P2: Loan Eligibility Signals (weight 25%)
-  4 = Salaried with stable employment, low liabilities, PAN provided
-  3 = Self-employed with income proof, PAN provided
-  2 = Irregular income or high liabilities (>50% of income)
-  1 = Unclear employment or refuses to share information
+  4 = Salaried, PAN provided, tenure ≥ 2 yrs, existing EMI < ₹50k/month — all green flags
+  3 = Salaried with PAN provided, OR good tenure + low EMI (but not both); OR self-employed with PAN + income proof
+  2 = Salaried but PAN NOT provided AND (short tenure OR high EMI); OR self-employed with only partial docs; OR irregular income
+  1 = Employment type unknown, unclear, or lead refuses to share — do NOT score 2 or higher without employment_type
 
 P3: Loan Amount & Property Value (weight 20%)
   4 = Ticket size ₹30L-₹2Cr with clear property type
