@@ -119,7 +119,7 @@ function LICSalesApp({ welcomeMessage, imageUrl, WorkflowImage, leadInfo }: LICS
             last_name: leadInfo.lastName,
             phone_number: leadInfo.phoneNumber,
             property_location: leadInfo.propertyLocation,
-            area_office: leadInfo.areaOffice,
+            preferred_area_office: leadInfo.areaOffice,
           }),
         }).catch((err) => {
           console.error('Failed to store lead info:', err);

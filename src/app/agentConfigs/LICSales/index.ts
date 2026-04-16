@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { LIC_HOUSING_INSTRUCTIONS } from './instructions';
 import RAGDATA from './RAG.json';
 import { calculateLeadScore } from './scoring';
-
+import { scoreLeadWithHelper } from './helperScoring';
 // ============================================================================
 // TYPE DEFINITIONS
 // ============================================================================
@@ -394,18 +394,21 @@ const lookupPincodeTool = tool({
 
 const calculateLeadScoreTool = tool({
   name: 'calculateLeadScore',
-  description: 'Calculates the lead qualification score from all collected state data. Reads the current state and scores across 5 parameters (Intent, Eligibility, Loan Amount, Decision Authority, LICHFL Preference). Call this at end of call or when enough data is collected. No parameters needed — it reads from state automatically.',
+  description: 'Hands off all collected state to a lightweight scoring model that evaluates the lead across 5 parameters (Intent, Eligibility, Loan Amount, Decision Authority, LICHFL Preference). Call this at end of call or when enough data is collected. No parameters needed — it reads from state automatically. Scoring is handled by a helper LLM, not by you.',
   parameters: z.object({}),
   execute: async () => {
     const state = stateManager.getState();
-    const result = calculateLeadScore(state);
+
+    // Hand off to lightweight helper LLM for scoring.
+    // Falls back to deterministic scorer if the helper fails.
+    const result = await scoreLeadWithHelper(state);
 
     stateManager.updateState({
-      p1_score: result.p1.score,
-      p2_score: result.p2.score,
-      p3_score: result.p3.score,
-      p4_score: result.p4.score,
-      p5_score: result.p5.score,
+      p1_score: result.p1_score,
+      p2_score: result.p2_score,
+      p3_score: result.p3_score,
+      p4_score: result.p4_score,
+      p5_score: result.p5_score,
       total_score: result.total_score,
       lead_category: result.lead_category,
       scoring_evidence: result.scoring_evidence,
@@ -413,12 +416,13 @@ const calculateLeadScoreTool = tool({
 
     return {
       success: true,
+      scored_by: result.scored_by,
       scores: {
-        p1: { score: result.p1.score, weighted: result.p1_weighted, evidence: result.p1.evidence },
-        p2: { score: result.p2.score, weighted: result.p2_weighted, evidence: result.p2.evidence },
-        p3: { score: result.p3.score, weighted: result.p3_weighted, evidence: result.p3.evidence },
-        p4: { score: result.p4.score, weighted: result.p4_weighted, evidence: result.p4.evidence },
-        p5: { score: result.p5.score, weighted: result.p5_weighted, evidence: result.p5.evidence },
+        p1: { score: result.p1_score, weighted: result.p1_score * 7.5, evidence: result.p1_evidence },
+        p2: { score: result.p2_score, weighted: result.p2_score * 6.25, evidence: result.p2_evidence },
+        p3: { score: result.p3_score, weighted: result.p3_score * 5, evidence: result.p3_evidence },
+        p4: { score: result.p4_score, weighted: result.p4_score * 3.75, evidence: result.p4_evidence },
+        p5: { score: result.p5_score, weighted: result.p5_score * 2.5, evidence: result.p5_evidence },
       },
       total_score: result.total_score,
       lead_category: result.lead_category,

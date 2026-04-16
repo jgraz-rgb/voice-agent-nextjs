@@ -13,6 +13,14 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { LeadInfo } from '@/app/types';
 
+const ALLOWED_LEADS = [
+  { name: 'Arjun Kumar', mobile: 8197162904, AreaOffice: 'Koramangala', propertyLocation: 'Bangalore' },
+  { name: 'Arvind Shekhar', mobile: 7837678234, AreaOffice: 'Zirakpur', propertyLocation: 'Mohali' },
+  { name: 'Vikas Singh', mobile: 7092678120, AreaOffice: 'Andheri East', propertyLocation: 'Mumbai' }, 
+  { name: 'Devesh Dixit', mobile: 7820190872, AreaOffice: 'Andheri East', propertyLocation: 'Mumbai' },
+  { name: 'Rahul Ved', mobile: 6235067123, AreaOffice: 'Greater Kailash', propertyLocation: 'Delhi' },
+];
+
 interface PreConnectionFormProps {
   isOpen: boolean;
   onSubmit: (leadInfo: LeadInfo) => void;
@@ -38,9 +46,10 @@ const PreConnectionForm: React.FC<PreConnectionFormProps> = ({ isOpen, onSubmit 
       newErrors.lastName = 'Last name is required';
     }
 
-    if (!phoneNumber.trim()) {
+    const rawPhone = phoneNumber.trim();
+    if (!rawPhone) {
       newErrors.phoneNumber = 'Phone number is required';
-    } else if (!/^[0-9+\s-()]+$/.test(phoneNumber.trim())) {
+    } else if (!/^[0-9+\s-()]+$/.test(rawPhone)) {
       newErrors.phoneNumber = 'Invalid phone number format';
     }
 
@@ -54,6 +63,28 @@ const PreConnectionForm: React.FC<PreConnectionFormProps> = ({ isOpen, onSubmit 
 
     if (!consentChecked) {
       newErrors.consent = 'Please confirm your consent to proceed';
+    }
+
+    // Whitelist validation — all fields must match an allowed lead entry
+    if (Object.keys(newErrors).length === 0) {
+      const fullName = `${firstName.trim()} ${lastName.trim()}`.toLowerCase();
+      const phoneDigits = rawPhone.replace(/\D/g, '');
+      const enteredLocation = propertyLocation.trim().toLowerCase();
+
+      const matched = ALLOWED_LEADS.find((lead) => {
+        const leadNameLower = lead.name.toLowerCase();
+        const leadPhone = String(lead.mobile);
+        const leadLocation = lead.propertyLocation.toLowerCase();
+        return (
+          leadNameLower === fullName &&
+          leadPhone === phoneDigits &&
+          leadLocation === enteredLocation
+        );
+      });
+
+      if (!matched) {
+        newErrors.phoneNumber = 'The details entered do not match our records. Please check and try again.';
+      }
     }
 
     setErrors(newErrors);
@@ -123,7 +154,7 @@ const PreConnectionForm: React.FC<PreConnectionFormProps> = ({ isOpen, onSubmit 
               id="phoneNumber"
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="+91 12345 67890"
+              placeholder="90XXXXXXXX"
               className={errors.phoneNumber ? 'border-red-500' : ''}
             />
             {errors.phoneNumber && (
@@ -159,6 +190,23 @@ const PreConnectionForm: React.FC<PreConnectionFormProps> = ({ isOpen, onSubmit 
             )}
           </div>
 
+          <div className="pt-2">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={consentChecked}
+                onChange={(e) => setConsentChecked(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-[rgb(0,82,156)]"
+              />
+              <span className="text-xs" style={{ color: 'rgb(69, 79, 91)' }}>
+                I confirm that the information provided by me here is accurate. I authorize LICHFL or its Authorized representatives to contact me for any queries and or my documents collection for loan application. This will override registry on DND/NDNC.
+              </span>
+            </label>
+            {errors.consent && (
+              <p className="text-sm text-red-500 mt-1">{errors.consent}</p>
+            )}
+          </div>
+
           <div className="pt-4">
             <Button
               type="submit"
@@ -176,23 +224,6 @@ const PreConnectionForm: React.FC<PreConnectionFormProps> = ({ isOpen, onSubmit 
             >
               Talk to Agent
             </Button>
-          </div>
-
-          <div className="pt-2">
-            <label className="flex items-start gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={consentChecked}
-                onChange={(e) => setConsentChecked(e.target.checked)}
-                className="mt-0.5 h-4 w-4 shrink-0 accent-[rgb(0,82,156)]"
-              />
-              <span className="text-xs" style={{ color: 'rgb(69, 79, 91)' }}>
-                I confirm that the information provided by me here is accurate. I authorize LICHFL or its Authorized representatives to contact me for any queries and or my documents collection for loan application. This will override registry on DND/NDNC.
-              </span>
-            </label>
-            {errors.consent && (
-              <p className="text-sm text-red-500 mt-1">{errors.consent}</p>
-            )}
           </div>
         </form>
       </DialogContent>

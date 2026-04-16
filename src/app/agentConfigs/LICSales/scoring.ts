@@ -102,10 +102,7 @@ export function scoreP2_Eligibility(state: LeadScoringInput): ParameterScore {
     if (hasPAN || hasIncome) return { score: 2, evidence: 'Self-employed, partial documentation' };
     return { score: 2, evidence: 'Self-employed, limited documentation' };
   }
-  if (emp) {
-    return { score: 2, evidence: `Employment: ${emp}, irregular profile` };
-  }
-  return { score: 1, evidence: 'Employment/income data not collected' };
+  return { score: 1, evidence: 'Employment/income data not collected — cannot assume' };
 }
 
 // ── P3: Loan Amount & Property Value (20%) ──────────────────────────────────
@@ -151,10 +148,7 @@ export function scoreP4_Decision(state: LeadScoringInput): ParameterScore {
   if (state.co_applicant && coApplicant.includes('spouse')) {
     return { score: 3, evidence: 'Joint with spouse (inferred from co-applicant)' };
   }
-  if (state.employment_type) {
-    return { score: 3, evidence: 'Decision authority not explicitly discussed, assumed primary/joint' };
-  }
-  return { score: 2, evidence: 'Decision authority unknown' };
+  return { score: 1, evidence: 'Decision authority not collected — cannot assume' };
 }
 
 // ── P5: LICHFL Preference (10%) ─────────────────────────────────────────────
@@ -176,7 +170,7 @@ export function scoreP5_Preference(state: LeadScoringInput): ParameterScore {
   if (pref.includes('other') || pref.includes('psu') || pref.includes('nbfc')) {
     return { score: 2, evidence: 'Primarily considering other lenders' };
   }
-  return { score: 3, evidence: 'Registered on LICHFL website, preference not explicitly discussed' };
+  return { score: 1, evidence: 'LICHFL preference not collected — cannot assume' };
 }
 
 // ── COMPOSITE SCORER ────────────────────────────────────────────────────────
