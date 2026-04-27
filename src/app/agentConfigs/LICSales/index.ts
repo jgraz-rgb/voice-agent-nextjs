@@ -277,8 +277,31 @@ export function formatZendeskDescription(
     `Weighted Points : ${p5.weighted}`,
     `\nTotal : ${score}`,
   ].join('\n');
-
-  return [header, qualSummary, scoringBreakdown].join('\n');
+  const ScoringParameters = [
+    ``,
+    `Scoring framework (for reference only) :`,
+    ``,
+    `Parameter 1: Purchase Intent & Timeline`,
+    `Weightage: 30%`,
+    `Scoring Criteria: 4=Ready (<3 months), 3=Shortlisted (3-6 mo), 2=Exploring (6-12 mo), 1=Browsing only`,
+    ``,
+    `Parameter 2: Loan Eligibility Signals`,
+    `Weightage: 25%`,
+    `Scoring Criteria: 4=Salaried stable, low liabilities, PAN, 3=Self-employed with proof, PAN, 2=Irregular/high liabilities (>50%), 1=Unclear/refuses`,
+    ``,
+    `Parameter 3: Loan Amount & Property Value`,
+    `Weightage: 20%`,
+    `Scoring Criteria: 4=Ticket ₹30L-₹2Cr, clear type, 3=Ticket outside range, 2=Vague, 1=No clarity`,
+    ``,
+    `Parameter 4: Decision-Making Authority`,
+    `Weightage: 15%`,
+    `Scoring Criteria: 4=Primary Decision Maker, 3=Joint with spouse (common in India), 2=Family approval needed, 1=Not the Decision Maker`,
+    ``,
+    `Parameter 5: LICHFL Preference`,
+    `Weightage: 10%`,
+    `Scoring Criteria: 4=LICHFL first preference, 3=Comparing 2-3 incl. LICHFL, 2=Primarily PSU/NBFC, 1=Already finalized elsewhere`,
+  ].join('\n');
+  return [header, qualSummary, scoringBreakdown, ScoringParameters].join('\n');
 }
 
 // ============================================================================
@@ -400,6 +423,40 @@ const calculateLeadScoreTool = tool({
   execute: async () => {
     const state = stateManager.getState();
 
+    // URGENT and PENDING leads exit the call early with no qualification data.
+    // Score them as 0 — do not run the scoring model.
+    const presetCategory = state.lead_category as string | undefined;
+    if (presetCategory === 'URGENT' || presetCategory === 'PENDING') {
+      const urgentEvidence = presetCategory === 'URGENT'
+        ? 'Lead escalated to human agent immediately — no qualification data collected'
+        : 'Lead requested callback — no qualification data collected';
+      stateManager.updateState({
+        p1_score: 0,
+        p2_score: 0,
+        p3_score: 0,
+        p4_score: 0,
+        p5_score: 0,
+        total_score: 0,
+        scoring_evidence: [`Score: 0 — ${urgentEvidence}`],
+      });
+      return {
+        success: true,
+        scored_by: 'skipped',
+        scores: {
+          p1: { score: 0, weighted: 0, evidence: urgentEvidence },
+          p2: { score: 0, weighted: 0, evidence: urgentEvidence },
+          p3: { score: 0, weighted: 0, evidence: urgentEvidence },
+          p4: { score: 0, weighted: 0, evidence: urgentEvidence },
+          p5: { score: 0, weighted: 0, evidence: urgentEvidence },
+        },
+        total_score: 0,
+        lead_category: presetCategory,
+        routing: presetCategory === 'URGENT' ? 'Immediate human escalation' : 'Schedule callback',
+        sla: presetCategory === 'URGENT' ? 'Immediate' : 'Callback as requested',
+        scoring_evidence: [`Score: 0 — ${urgentEvidence}`],
+      };
+    }
+
     // Hand off to lightweight helper LLM for scoring.
     // Falls back to deterministic scorer if the helper fails.
     const result = await scoreLeadWithHelper(state);
@@ -494,6 +551,32 @@ const syncToLeadSquaredTool = tool({
   },
 });
 
+// ============================================================================
+// RAG QUERY SYNTHESIS — OpenAI rewrite to extract English search terms
+// ============================================================================
+
+async function synthesizeRAGQuery(userQuery: string): Promise<string[]> {
+  try {
+    const response = await fetch('/bfsi-agentic-suite/api/lic/query-expansion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: userQuery }),
+    });
+
+    if (!response.ok) throw new Error(`Query expansion API error: ${response.status}`);
+
+    const json = await response.json();
+    if (Array.isArray(json.terms) && json.terms.length > 0) {
+      return json.terms.map((t: any) => String(t).toLowerCase());
+    }
+  } catch (err) {
+    console.error('[RAG] Query synthesis failed, falling back to tokenization:', err);
+  }
+
+  // Fallback: simple tokenization
+  return userQuery.toLowerCase().split(/\s+/).filter(t => t.length > 1);
+}
+
 const ragSearchTool = tool({
   name: 'ragSearch',
   description: 'Searches the LICHFL home loan knowledge base for answers to customer questions. Use when the lead asks about documents, eligibility, EMI, rates, tenure, tax benefits, etc.',
@@ -502,9 +585,11 @@ const ragSearchTool = tool({
     top_k: z.number().int().positive().max(10).nullable().default(null).describe('Number of results to return, default 5'),
   }),
   execute: async ({ query, top_k }: { query: string; top_k?: number | null }) => {
-    const q = query.toLowerCase();
     const k = top_k && top_k > 0 && top_k <= 10 ? top_k : 5;
     const data: any = RAGDATA as any;
+
+    const searchTerms = await synthesizeRAGQuery(query);
+    console.log('[RAG] Synthesized terms:', searchTerms);
 
     function extractText(v: any): string {
       if (v == null) return '';
@@ -517,50 +602,36 @@ const ragSearchTool = tool({
 
     function scoreText(text: string): number {
       const t = text.toLowerCase();
-      if (!t || !q) return 0;
-      const terms = q.split(/\s+/).filter(Boolean);
+      if (!t || searchTerms.length === 0) return 0;
       let score = 0;
-      for (const term of terms) {
+      for (const term of searchTerms) {
         let idx = t.indexOf(term);
         while (idx !== -1) {
-          score += 1;
+          // Longer terms get higher weight (more specific match)
+          score += Math.max(1, term.length / 3);
           idx = t.indexOf(term, idx + term.length);
         }
       }
       return score;
     }
 
-    function makeExcerpt(text: string, term: string, maxLen = 280): string {
-      const t = text.trim();
-      if (!t) return '';
-      const i = t.toLowerCase().indexOf(term.toLowerCase());
-      if (i === -1) return t.slice(0, maxLen);
-      const start = Math.max(0, i - Math.floor(maxLen / 2));
-      const end = Math.min(t.length, start + maxLen);
-      return t.slice(start, end);
-    }
-
     const results: Array<{
-      article_id: string;
-      article_title: string;
-      category?: string;
+      type: 'article' | 'faq';
+      title: string;
+      content: string;
       score: number;
-      excerpt: string;
-      payload: any;
     }> = [];
 
     const articles: any[] = (data && data.articles) || [];
     for (const article of articles) {
-      const articleText = extractText({ title: article.title, content: article.content, keywords: article.keywords });
-      const aScore = scoreText(articleText);
+      const searchableText = extractText({ title: article.title, content: article.content, keywords: article.keywords });
+      const aScore = scoreText(searchableText);
       if (aScore > 0) {
         results.push({
-          article_id: String(article.id || ''),
-          article_title: String(article.title || ''),
-          category: article.category,
+          type: 'article',
+          title: String(article.title || ''),
+          content: String(article.content || ''),
           score: aScore,
-          excerpt: makeExcerpt(articleText, q),
-          payload: article,
         });
       }
     }
@@ -571,18 +642,23 @@ const ragSearchTool = tool({
       const fScore = scoreText(faqText);
       if (fScore > 0) {
         results.push({
-          article_id: 'faq',
-          article_title: faq.question || 'FAQ',
+          type: 'faq',
+          title: String(faq.question || ''),
+          content: String(faq.answer || ''),
           score: fScore,
-          excerpt: makeExcerpt(faqText, q),
-          payload: faq,
         });
       }
     }
 
     results.sort((a, b) => b.score - a.score);
     const out = results.slice(0, k);
-    return { query, total_matches: results.length, results: out };
+    return {
+      query,
+      synthesized_terms: searchTerms,
+      total_matches: results.length,
+      results: out,
+      instruction: 'Use the "content" field from the top results to answer the customer\'s question in natural Hindi. Do not invent any information beyond what is provided here.',
+    };
   },
 });
 

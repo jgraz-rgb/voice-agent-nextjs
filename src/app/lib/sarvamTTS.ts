@@ -28,7 +28,7 @@ export class SarvamTTS {
     if (!this.apiKey) {
       throw new Error('Sarvam API key not configured. Set SARVAM_API_KEY or sarvam_key.');
     }
-    this.speaker = options.speaker ?? 'ritu';
+    this.speaker = options.speaker ?? 'shubh';
     this.language = options.language ?? 'hi-IN';
     this.model = options.model ?? 'bulbul:v3';
     this.pace = options.pace ?? 1.1;
