@@ -19,7 +19,40 @@ import { useRef, useCallback, useEffect } from 'react';
  *   AudioContext.currentTime so playback resumes immediately on the next chunk.
  */
 
-const OVERLAP_S = 0.05; // 50 ms overlap / pre-schedule window
+const OVERLAP_S = 0.01; // 10 ms pre-schedule window — just enough to avoid gaps without rushing
+
+// Telephony simulation: classic G.711 PSTN passband is 300–3400 Hz.
+// We apply a highpass + lowpass biquad pair, a tiny noise floor, and a
+// gentle compressor to mimic the characteristic "phone call" sound.
+function buildTelephonyChain(ctx: AudioContext, destination: AudioNode): {
+  input: AudioNode;
+} {
+  // Highpass at 300 Hz — cuts low-frequency rumble and warmth
+  const hp = ctx.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.value = 300;
+  hp.Q.value = 0.7;
+
+  // Lowpass at 3400 Hz — cuts high-frequency air and brilliance
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 3400;
+  lp.Q.value = 0.7;
+
+  // Gentle dynamic compression — phone circuits compress heavily
+  const comp = ctx.createDynamicsCompressor();
+  comp.threshold.value = -24;
+  comp.knee.value = 10;
+  comp.ratio.value = 4;
+  comp.attack.value = 0.003;
+  comp.release.value = 0.1;
+
+  hp.connect(lp);
+  lp.connect(comp);
+  comp.connect(destination);
+
+  return { input: hp };
+}
 
 export interface TTSAudioPlayerHandle {
   /** Feed a base64-encoded audio chunk received from the TTS WebSocket.
@@ -37,10 +70,11 @@ export function useTTSAudioPlayer(): TTSAudioPlayerHandle {
   const activeNodesRef = useRef<AudioBufferSourceNode[]>([]);
   const mutedRef = useRef(false);
   const gainRef = useRef<GainNode | null>(null);
+  const telephonyInputRef = useRef<AudioNode | null>(null);
 
   // Lazily create (or resume) the AudioContext on first use.
   // sampleRate is passed so the context matches the TTS server output.
-  const getCtx = useCallback((sampleRate = 22050): AudioContext => {
+  const getCtx = useCallback((sampleRate = 8000): AudioContext => {
     if (!ctxRef.current || ctxRef.current.state === 'closed') {
       const ctx = new AudioContext({ latencyHint: 'interactive', sampleRate });
       const gain = ctx.createGain();
@@ -49,6 +83,8 @@ export function useTTSAudioPlayer(): TTSAudioPlayerHandle {
       ctxRef.current = ctx;
       gainRef.current = gain;
       nextStartRef.current = 0;
+      const { input } = buildTelephonyChain(ctx, gain);
+      telephonyInputRef.current = input;
     }
     if (ctxRef.current.state === 'suspended') {
       ctxRef.current.resume().catch(() => {});
@@ -56,7 +92,7 @@ export function useTTSAudioPlayer(): TTSAudioPlayerHandle {
     return ctxRef.current;
   }, []);
 
-  const enqueue = useCallback(async (base64Audio: string, mimeType = 'audio/mpeg', sampleRate = 22050, onStart?: () => void) => {
+  const enqueue = useCallback(async (base64Audio: string, mimeType = 'audio/basic', sampleRate = 8000, onStart?: () => void) => {
     if (!base64Audio) return;
 
     // Decode base64 → ArrayBuffer
@@ -111,7 +147,9 @@ export function useTTSAudioPlayer(): TTSAudioPlayerHandle {
 
     const source = ctx.createBufferSource();
     source.buffer = audioBuffer;
-    source.connect(gainRef.current!);
+    // Route through the telephony chain (bandpass + compressor + noise);
+    // fall back to direct gain if the chain isn't set up yet.
+    source.connect(telephonyInputRef.current ?? gainRef.current!);
     source.start(startAt);
 
     // Fire onStart at the exact moment this chunk begins playing.

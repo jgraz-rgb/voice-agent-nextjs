@@ -133,6 +133,9 @@ export function useHandleSessionHistory() {
     const deltaText = item.delta || "";
     console.log('[handleTranscriptionDelta] itemId:', itemId, '| delta:', JSON.stringify(deltaText));
     if (itemId) {
+      // Create the item if it doesn't exist yet (text-modality: history_added
+      // may arrive after the first delta, so we create it eagerly here).
+      addTranscriptMessage(itemId, 'assistant', '');
       updateTranscriptMessage(itemId, deltaText, true);
     }
   }

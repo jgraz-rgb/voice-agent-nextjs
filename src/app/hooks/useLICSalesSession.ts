@@ -12,7 +12,7 @@ import { useHandleSessionHistory } from './useHandleSessionHistory';
 import { useTTSAudioPlayer } from './useTTSAudioPlayer';
 import { SessionStatus } from '../types';
 
-const LIC_TTS_API_URL = '/bfsi-agentic-suite/api/lic/tts';
+const LIC_TTS_STREAM_URL = '/bfsi-agentic-suite/api/lic/tts/stream';
 // ── TTS chunking thresholds ────────────────────────────────────────────────
 // Chunks are flushed at sentence boundaries (।?!) first, then at clause
 // boundaries (,.;:) only when the chunk is long enough that splitting there
@@ -177,64 +177,22 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
       const chunkRawText = text;
       const chunkItemId = itemId;
 
-      // ── Parallel fetch, sequential enqueue ──────────────────────────────────
+      // ── Sequential fetch + enqueue ───────────────────────────────────────────
+      // Both the fetch AND the enqueue are chained on ttsQueueRef so segment N
+      // never starts fetching until segment N-1 has fully enqueued its audio.
+      // This guarantees transcript order and eliminates the race where a faster
+      // synthesis for a later chunk would get scheduled before an earlier one.
       const controller = new AbortController();
       inFlightControllersRef.current.add(controller);
 
-      const fetchPromise = (async () => {
-        if (generation !== generationRef.current || disconnectedRef.current) return null;
-        try {
-          const response = await fetch(LIC_TTS_API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: cleaned }),
-            signal: controller.signal,
-          });
-          if (!response.ok) {
-            const body = await response.text();
-            throw new Error(`LIC TTS API failed (${response.status}): ${body}`);
-          }
-          return (await response.json()) as {
-            audioBase64: string;
-            mimeType?: string;
-            sampleRate?: number;
-          };
-        } catch (error: any) {
-          if (error?.name !== 'AbortError') {
-            console.error('[LICSales TTS] synthesis error:', error);
-          }
-          return null;
-        } finally {
-          inFlightControllersRef.current.delete(controller);
-        }
-      })();
-
-      // Chain the enqueue step so audio plays in order.
-      // Both fetchPromise AND enqueueAudio are awaited — enqueueAudio is async
-      // (decodeAudioData inside). Without awaiting it chunk N+1 starts decoding
-      // before chunk N finishes → out-of-order audio.
       const prev = ttsQueueRef.current;
-      ttsQueueRef.current = (async () => {
-        await prev;
-        const payload = await fetchPromise;
-        if (!payload) {
-          // Fetch failed/aborted — reveal text immediately so transcript isn't stuck
-          if (chunkItemId && chunkRawText && !transcriptFinalizedRef.current) {
-            historyHandlersRef.current.handleTranscriptionDelta({
-              item_id: chunkItemId,
-              delta: chunkRawText,
-            });
-          }
+      ttsQueueRef.current = prev.then(async () => {
+        if (generation !== generationRef.current || disconnectedRef.current) {
+          inFlightControllersRef.current.delete(controller);
           return;
         }
-        if (generation !== generationRef.current || disconnectedRef.current) return;
-        if (!payload.audioBase64) return;
 
-        // onStart fires at the exact AudioContext moment this chunk begins playing.
-        // Guard with transcriptFinalizedRef — if the full text was already written
-        // by handleHistoryUpdated/handleTranscriptionCompleted, skip the delta
-        // to avoid duplicating text that's already showing.
-        const onStart = () => {
+        const revealText = () => {
           if (chunkItemId && chunkRawText && !transcriptFinalizedRef.current) {
             historyHandlersRef.current.handleTranscriptionDelta({
               item_id: chunkItemId,
@@ -244,17 +202,82 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
         };
 
         try {
-          await enqueueAudio(payload.audioBase64, payload.mimeType || 'audio/mpeg', payload.sampleRate || 22050, onStart);
-        } catch {
-          // decode error — reveal text anyway so transcript isn't stuck
-          onStart();
-          return;
+          const response = await fetch(LIC_TTS_STREAM_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: cleaned }),
+            signal: controller.signal,
+          });
+
+          if (!response.ok || !response.body) {
+            const body = await response.text().catch(() => '');
+            throw new Error(`LIC TTS stream failed (${response.status}): ${body}`);
+          }
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buf = '';
+          const audioChunks: string[] = [];
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (generation !== generationRef.current || disconnectedRef.current) break;
+
+            if (!done) {
+              buf += decoder.decode(value, { stream: true });
+            }
+
+            const lines = buf.split('\n');
+            buf = done ? '' : (lines.pop() ?? '');
+
+            for (const line of lines) {
+              if (!line.startsWith('data: ')) continue;
+              let event: any;
+              try { event = JSON.parse(line.slice(6)); } catch { continue; }
+
+              if (event.type === 'audio' && event.audio) {
+                audioChunks.push(event.audio);
+              } else if (event.type === 'error') {
+                console.error('[LICSales TTS] stream error:', event.message);
+              }
+            }
+
+            if (done) break;
+          }
+
+          if (audioChunks.length > 0 && generation === generationRef.current && !disconnectedRef.current) {
+            // Each SSE audio chunk is independently padded base64 — decode each to
+            // bytes, concatenate, then re-encode as one valid base64 string.
+            const binaryParts = audioChunks.map(b64 => atob(b64));
+            const totalLen = binaryParts.reduce((s, p) => s + p.length, 0);
+            const bytes = new Uint8Array(totalLen);
+            let offset = 0;
+            for (const part of binaryParts) {
+              for (let i = 0; i < part.length; i++) bytes[offset++] = part.charCodeAt(i);
+            }
+            let binaryStr = '';
+            for (let i = 0; i < bytes.length; i++) binaryStr += String.fromCharCode(bytes[i]);
+            const combined = btoa(binaryStr);
+            try {
+              await enqueueAudio(combined, 'audio/mpeg', 22050, revealText);
+            } catch {
+              revealText();
+            }
+            if (!agentSpeakingRef.current) {
+              agentSpeakingRef.current = true;
+              callbacks.onAgentSpeakingChange?.(true);
+            }
+          }
+        } catch (error: any) {
+          if (error?.name !== 'AbortError') {
+            console.error('[LICSales TTS] stream error:', error);
+          }
+          // Reveal text so transcript isn't stuck on failure
+          revealText();
+        } finally {
+          inFlightControllersRef.current.delete(controller);
         }
-        if (!agentSpeakingRef.current) {
-          agentSpeakingRef.current = true;
-          callbacks.onAgentSpeakingChange?.(true);
-        }
-      })();
+      });
     },
     [callbacks, enqueueAudio, historyHandlersRef],
   );
