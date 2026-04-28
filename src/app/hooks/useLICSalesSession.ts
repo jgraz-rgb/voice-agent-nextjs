@@ -22,9 +22,89 @@ const TTS_CLAUSE_MIN_CHARS   = 100;  // flush at ,.;: only after this length
 const TTS_FORCE_FLUSH_CHARS  = 180;  // hard cap — flush wherever we are
 const TTS_SENTENCE_BOUNDARY_REGEX = /[।?!]/;
 const TTS_CLAUSE_BOUNDARY_REGEX   = /[,.;:]/;
-const MIC_VAD_THRESHOLD = 0.6;
+const MIC_VAD_THRESHOLD = 0.4;
 const MIC_PREFIX_PADDING_MS = 300;
 const MIC_SILENCE_DURATION_MS = 600;
+
+// Filler phrases grouped by conversational tier.
+// Tier is selected based on how many turns have elapsed so the fillers feel
+// natural as the conversation warms up.
+const FILLER_CATEGORIES = {
+  // Turns 1-2: non-committal thinking sounds — safe opener for any topic
+  thinking: [
+    ",",
+    "…",
+    "एक सेकंड…",
+    "… एक सेकंड…",
+    "उम्… हाँ, एक सेकंड…",
+    "हम्म्म… ज़रा सोचता हूँ…",
+  ],
+  // Turns 3-5: warm acknowledgement — signals the agent is listening
+  acknowledgement: [
+    "जी…",
+    "जी जी…",
+    "हाँ जी…",
+    "अच्छा जी…",
+    "ठीक है जी…",
+    "हम्म, जी…",
+    "जी… मतलब…",
+    "जी बिल्कुल, एक सेकंड…",
+    "हाँ जी, समझ गया…",
+    "अच्छा जी, ठीक है…",
+  ],
+  // Turns 6+: sales-flow starters — feel natural once rapport is established
+  salesFlow: [
+    "तो देखिए…",
+    "अब बात ये है…",
+    "दरअसल…",
+    "असल में…",
+    "मैं आपको बताता हूँ…",
+    "अच्छा… तो देखिए…",
+    "जी जी… देखिए…",
+    "हम्म… जी…",
+    "अच्छा जी…",
+    "जी, तो इस बारे में…",
+    "हाँ जी, तो देखिए ना…",
+    "बिल्कुल जी, मैं बताता हूँ…",
+  ],
+} as const;
+
+type FillerCategory = keyof typeof FILLER_CATEGORIES;
+
+// Category weights per tier [thinking, acknowledgement, salesFlow].
+// Each sub-array sums to 1.0 and maps to FILLER_CATEGORY_ORDER.
+const FILLER_CATEGORY_ORDER: FillerCategory[] = ['thinking', 'acknowledgement', 'salesFlow'];
+const FILLER_WEIGHTS: Record<string, number[]> = {
+  early:  [0.70, 0.25, 0.05], // turns 1-2
+  mid:    [0.20, 0.60, 0.20], // turns 3-5
+  mature: [0.10, 0.30, 0.60], // turns 6+
+};
+
+function getFillerTier(turnCount: number): keyof typeof FILLER_WEIGHTS {
+  if (turnCount <= 2) return 'early';
+  if (turnCount <= 5) return 'mid';
+  return 'mature';
+}
+
+function weightedPickCategory(tier: keyof typeof FILLER_WEIGHTS): FillerCategory {
+  const weights = FILLER_WEIGHTS[tier];
+  const r = Math.random();
+  let cumulative = 0;
+  for (let i = 0; i < weights.length; i++) {
+    cumulative += weights[i];
+    if (r < cumulative) return FILLER_CATEGORY_ORDER[i];
+  }
+  return FILLER_CATEGORY_ORDER[FILLER_CATEGORY_ORDER.length - 1];
+}
+
+function shuffleArray<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 /**
  * Normalise text before sending to TTS:
@@ -155,6 +235,26 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
    */
   const generationRef = useRef<number>(0);
   const disconnectedRef = useRef<boolean>(false);
+  const userSpeechStopTimeRef = useRef<number | null>(null);
+  const firstAudioPlayedRef = useRef<boolean>(false);
+  // Filler audio — incremented when the filler should be cancelled
+  const fillerGenerationRef = useRef<number>(0);
+  // True once a filler has been enqueued for the current user turn so we
+  // don't double-enqueue if speech_stopped fires more than once.
+  const fillerPlayedThisTurnRef = useRef<boolean>(false);
+  // Tracks completed user turns so filler tier advances as conversation warms up
+  const turnCountRef = useRef<number>(0);
+  // Per-category shuffle queues — refilled when exhausted so phrases never repeat
+  const fillerQueuesRef = useRef<Record<FillerCategory, string[]>>({
+    thinking: [],
+    acknowledgement: [],
+    salesFlow: [],
+  });
+  // True once the first real TTS chunk has been enqueued for the current turn.
+  // Used by the filler gate to skip the filler if audio arrived within 1.5 s.
+  const firstChunkArrivedRef = useRef<boolean>(false);
+  // Handle for the 1.5 s filler-gate timer so it can be cleared on interrupt.
+  const fillerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Status helper ──────────────────────────────────────────────────────────
 
@@ -246,6 +346,11 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
           }
 
           if (audioChunks.length > 0 && generation === generationRef.current && !disconnectedRef.current) {
+            if (!firstAudioPlayedRef.current && userSpeechStopTimeRef.current !== null) {
+              firstAudioPlayedRef.current = true;
+              const elapsed = ((performance.now() - userSpeechStopTimeRef.current) / 1000).toFixed(2);
+              console.log(`[LICSales] First audio chunk ready: ${elapsed}s after user stopped speaking`);
+            }
             // Each SSE audio chunk is independently padded base64 — decode each to
             // bytes, concatenate, then re-encode as one valid base64 string.
             const binaryParts = audioChunks.map(b64 => atob(b64));
@@ -312,6 +417,11 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
   );
 
   const resetTTSState = useCallback((isDisconnect = false) => {
+    if (fillerTimerRef.current !== null) {
+      clearTimeout(fillerTimerRef.current);
+      fillerTimerRef.current = null;
+    }
+    firstChunkArrivedRef.current = false;
     inFlightControllersRef.current.forEach(c => c.abort());
     inFlightControllersRef.current.clear();
     pendingChunkRef.current = '';
@@ -327,6 +437,103 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
     }
   }, [callbacks]);
 
+  // ── Filler audio ──────────────────────────────────────────────────────────
+  // Called 1.5 s after speech_stopped (via setTimeout gate). If the first real
+  // TTS chunk has already arrived by then (gap < 1.5 s) the filler is skipped.
+  // Otherwise the filler plays to completion and the real TTS chunk — which may
+  // arrive while the filler is still speaking — is automatically queued behind
+  // it on ttsQueueRef, so playback is seamless with no mid-word cutoff.
+  const playFillerAudio = useCallback(() => {
+    if (disconnectedRef.current) return;
+    // Skip if the real response already started within the 1.5 s window
+    if (firstChunkArrivedRef.current) return;
+
+    fillerPlayedThisTurnRef.current = true;
+    turnCountRef.current += 1;
+    const myFillerGen = fillerGenerationRef.current;
+
+    const tier = getFillerTier(turnCountRef.current);
+    const category = weightedPickCategory(tier);
+    const queues = fillerQueuesRef.current;
+    if (queues[category].length === 0) {
+      queues[category] = shuffleArray([...FILLER_CATEGORIES[category]]);
+    }
+    const phrase = queues[category].pop()!;
+    const cleaned = normaliseTTSText(phrase).trim();
+    if (!cleaned) return;
+
+    const controller = new AbortController();
+    inFlightControllersRef.current.add(controller);
+
+    // Chain onto ttsQueueRef so the filler occupies the same playback slot as
+    // real TTS chunks — the real first chunk will schedule immediately after.
+    const prev = ttsQueueRef.current;
+    ttsQueueRef.current = prev.then(async () => {
+      if (myFillerGen !== fillerGenerationRef.current || disconnectedRef.current) {
+        inFlightControllersRef.current.delete(controller);
+        return;
+      }
+      try {
+        const response = await fetch(LIC_TTS_STREAM_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: cleaned }),
+          signal: controller.signal,
+        });
+
+        if (!response.ok || !response.body) return;
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+        const audioChunks: string[] = [];
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (myFillerGen !== fillerGenerationRef.current || disconnectedRef.current) break;
+          if (!done) buf += decoder.decode(value, { stream: true });
+          const lines = buf.split('\n');
+          buf = done ? '' : (lines.pop() ?? '');
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            let ev: any;
+            try { ev = JSON.parse(line.slice(6)); } catch { continue; }
+            if (ev.type === 'audio' && ev.audio) audioChunks.push(ev.audio);
+          }
+          if (done) break;
+        }
+
+        if (audioChunks.length === 0) return;
+        if (myFillerGen !== fillerGenerationRef.current || disconnectedRef.current) return;
+
+        const binaryParts = audioChunks.map(b64 => atob(b64));
+        const totalLen = binaryParts.reduce((s, p) => s + p.length, 0);
+        const bytes = new Uint8Array(totalLen);
+        let offset = 0;
+        for (const part of binaryParts) {
+          for (let i = 0; i < part.length; i++) bytes[offset++] = part.charCodeAt(i);
+        }
+        let binaryStr = '';
+        for (let i = 0; i < bytes.length; i++) binaryStr += String.fromCharCode(bytes[i]);
+        const combined = btoa(binaryStr);
+
+        if (myFillerGen !== fillerGenerationRef.current || disconnectedRef.current) return;
+
+        await enqueueAudio(combined, 'audio/mpeg', 22050);
+        if (!agentSpeakingRef.current) {
+          agentSpeakingRef.current = true;
+          callbacks.onAgentSpeakingChange?.(true);
+        }
+      } catch (err: any) {
+        if (err?.name !== 'AbortError') {
+          console.warn('[LICSales filler] TTS error:', err);
+        }
+      } finally {
+        inFlightControllersRef.current.delete(controller);
+      }
+    });
+  }, [callbacks, enqueueAudio]);
+
   // ── Transport event handler ────────────────────────────────────────────────
 
   function handleTransportEvent(event: any) {
@@ -338,6 +545,17 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
       }
 
       case 'input_audio_buffer.speech_started': {
+        userSpeechStopTimeRef.current = null;
+        firstAudioPlayedRef.current = false;
+        firstChunkArrivedRef.current = false;
+        fillerPlayedThisTurnRef.current = false;
+        // Clear any pending filler gate timer from the previous turn
+        if (fillerTimerRef.current !== null) {
+          clearTimeout(fillerTimerRef.current);
+          fillerTimerRef.current = null;
+        }
+        // Cancel any in-flight or queued filler from the previous turn
+        fillerGenerationRef.current += 1;
         if (agentSpeakingRef.current) {
           console.log('[LICSales] User speech detected while agent speaking — interrupting stream');
           generationRef.current += 1;
@@ -348,10 +566,44 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
         break;
       }
 
+      case 'input_audio_buffer.speech_stopped': {
+        userSpeechStopTimeRef.current = performance.now();
+        firstChunkArrivedRef.current = false;
+        // Gate: wait 1.5 s before deciding to play a filler.
+        // • If the real TTS chunk arrives within 1.5 s, playFillerAudio() will
+        //   see firstChunkArrivedRef=true and bail out immediately (no filler).
+        // • If the gap is 1.5–3 s, the filler plays to completion; the real
+        //   chunk is queued behind it on ttsQueueRef and plays right after.
+        // • Beyond 3 s the filler has long finished before the chunk arrives.
+        if (!fillerPlayedThisTurnRef.current && !disconnectedRef.current) {
+          fillerTimerRef.current = setTimeout(() => {
+            fillerTimerRef.current = null;
+            if (!fillerPlayedThisTurnRef.current && !disconnectedRef.current) {
+              playFillerAudio();
+            }
+          }, 1500);
+        }
+        break;
+      }
+
       // ── Agent text output (TEXT modality) ────────────────────────────────
       case 'response.text.delta': {
         const delta: string = event.delta ?? '';
         if (responseTextRef.current === '') {
+          // Mark that real TTS content has arrived so the filler gate can skip
+          // the filler if its 1.5 s timer hasn't fired yet.
+          firstChunkArrivedRef.current = true;
+          // Cancel the filler gate timer — real audio is coming, no filler needed.
+          if (fillerTimerRef.current !== null) {
+            clearTimeout(fillerTimerRef.current);
+            fillerTimerRef.current = null;
+          }
+          // Only cancel a filler that hasn't started playing yet. If the filler
+          // is already playing (fillerPlayedThisTurnRef=true) we let it finish —
+          // the real TTS chunk will follow it naturally via ttsQueueRef.
+          if (!fillerPlayedThisTurnRef.current) {
+            fillerGenerationRef.current += 1;
+          }
           // New response starting — bump generation so any audio from a previous
           // response is discarded, but do NOT abort in-flight controllers or stop
           // audio here. resetTTSState() was already called by the interrupt path

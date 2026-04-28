@@ -42,6 +42,7 @@ async function getWarmSocket(apiKey: string): Promise<SarvamSocket> {
   connectPromise = (async () => {
     const client = new SarvamAIClient({ apiSubscriptionKey: apiKey });
     const socket = await client.textToSpeechStreaming.connect({
+      model: 'bulbul:v3' as any,
       send_completion_event: 'true',
       'Api-Subscription-Key': apiKey,
     });
@@ -83,7 +84,6 @@ export async function POST(req: NextRequest) {
 
   const speaker  = body?.speaker  ?? 'ratan';
   const language = body?.language ?? 'hi-IN';
-  const model    = body?.model    ?? 'bulbul:v3';
   const pace     = body?.pace     ?? 1.1;
 
   const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
@@ -169,7 +169,6 @@ export async function POST(req: NextRequest) {
       socket.configureConnection({
         type: 'config',
         data: {
-          model: model as any,
           speaker: speaker as any,
           target_language_code: language as any,
           pace,
