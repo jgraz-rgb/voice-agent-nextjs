@@ -1,5 +1,6 @@
 "use client";
 import "@/app/lib/audioConstraintsPatch";
+import "@/app/lib/realtimeEventPatch";
 import React, { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
@@ -45,7 +46,6 @@ const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
 };
 
 import useAudioDownload from "./hooks/useAudioDownload";
-import { useHandleSessionHistory } from "./hooks/useHandleSessionHistory";
 
 function App({ welcomeMessage, imageUrl, WorkflowImage }) {
   const searchParams = useSearchParams()!;
@@ -89,6 +89,7 @@ function App({ welcomeMessage, imageUrl, WorkflowImage }) {
     disconnect,
     sendUserText,
     sendEvent,
+    updateSessionConfig,
     interrupt,
     mute
   } = useRealtimeSession({
@@ -130,8 +131,6 @@ function App({ welcomeMessage, imageUrl, WorkflowImage }) {
       console.error('Failed to send via SDK', err);
     }
   };
-
-  useHandleSessionHistory();
 
   const pathAgentConfigKey = React.useMemo(() => {
     if (!pathname) return null;
@@ -192,7 +191,9 @@ function App({ welcomeMessage, imageUrl, WorkflowImage }) {
       );
       addTranscriptBreadcrumb(`Agent: ${selectedAgentName}`, currentAgent);
       const shouldTrigger = (agentSetKey !== 'kotakInsurance') && !handoffTriggeredRef.current;
-      updateSession(shouldTrigger);
+      // Pass instructions explicitly so they are guaranteed to be sent even if
+      // the selectedAgentConfigSet closure inside updateSession is stale.
+      updateSession(shouldTrigger, currentAgent?.instructions);
       // Reset flag after handling so subsequent effects behave normally
       handoffTriggeredRef.current = false;
     }
@@ -204,9 +205,16 @@ function App({ welcomeMessage, imageUrl, WorkflowImage }) {
     }
   }, [isPTTActive]);
 
-  const fetchEphemeralKey = async (): Promise<string | null> => {
-    logClientEvent({ url: "/session" }, "fetch_session_token_request");
-    const tokenResponse = await fetch("/bfsi-agentic-suite/api/session");
+  const fetchEphemeralKey = async (instructions?: string): Promise<string | null> => {
+    logClientEvent({ url: "/bfsi-agentic-suite/session" }, "fetch_session_token_request");
+    const tokenResponse = await fetch("/bfsi-agentic-suite/api/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        instructions: instructions || undefined,
+        output_modalities: ["audio"],
+      }),
+    });
     const data = await tokenResponse.json();
     logServerEvent(data, "fetch_session_token_response");
 
@@ -227,7 +235,18 @@ function App({ welcomeMessage, imageUrl, WorkflowImage }) {
       setSessionStatus("CONNECTING");
 
       try {
-        const EPHEMERAL_KEY = await fetchEphemeralKey();
+        // Find the root agent's instructions to embed in the ephemeral key request.
+        // gpt-realtime-1.5 requires instructions to be set at client_secret creation
+        // time — post-connect session.update is ignored by the new GA endpoint.
+        const rootAgent = sdkScenarioMap[agentSetKey].find(
+          (a) => a.name === selectedAgentName
+        ) ?? sdkScenarioMap[agentSetKey][0];
+        const rootInstructions =
+          typeof rootAgent?.instructions === "string"
+            ? rootAgent.instructions
+            : undefined;
+
+        const EPHEMERAL_KEY = await fetchEphemeralKey(rootInstructions);
         if (!EPHEMERAL_KEY) return;
 
         // Ensure the selectedAgentName is first so that it becomes the root
@@ -321,7 +340,11 @@ function App({ welcomeMessage, imageUrl, WorkflowImage }) {
     sendClientEvent({ type: 'response.create' }, '(simulated user text message)');
   };
 
-  const updateSession = (shouldTriggerResponse: boolean = false) => {
+  const updateSession = (shouldTriggerResponse: boolean = false, _agentInstructions?: string) => {
+    // Use SDK's updateSessionConfig (proper GA format) instead of raw sendEvent.
+    // Instructions are already sent by the SDK at connect time via initialSessionConfig
+    // (from the RealtimeAgent object) — we must NOT re-send them here or we risk
+    // overwriting with a stale/empty value on the second session.update call.
     const turnDetection = isPTTActive
       ? null
       : {
@@ -332,12 +355,15 @@ function App({ welcomeMessage, imageUrl, WorkflowImage }) {
         create_response: true,
       };
 
-    sendEvent({
-      type: 'session.update',
-      session: {
-        turn_detection: turnDetection,
+    updateSessionConfig({
+      outputModalities: ['audio'],
+      audio: {
+        input: {
+          transcription: { model: 'gpt-4o-transcribe', language: 'en' },
+          turnDetection: turnDetection as any,
+        },
       },
-    });
+    } as any);
 
     // Send an initial 'hi' message to trigger the agent to greet the user
     if (shouldTriggerResponse) {

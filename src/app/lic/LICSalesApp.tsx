@@ -24,7 +24,6 @@ import { calculateLeadScore } from '@/app/agentConfigs/LICSales/scoring';
 import { createModerationGuardrail } from '@/app/agentConfigs/guardrails';
 
 import useAudioDownload from '@/app/hooks/useAudioDownload';
-import { useHandleSessionHistory } from '@/app/hooks/useHandleSessionHistory';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -69,6 +68,7 @@ function LICSalesApp({ welcomeMessage, imageUrl, WorkflowImage, leadInfo }: LICS
     disconnect,
     sendUserText,
     sendEvent,
+    updateSessionConfig,
     interrupt,
     mute,
   } = useLICSalesSession({
@@ -82,13 +82,28 @@ function LICSalesApp({ welcomeMessage, imageUrl, WorkflowImage, leadInfo }: LICS
   });
 
   const { startRecording, stopRecording, downloadRecording } = useAudioDownload();
-  useHandleSessionHistory();
 
   // ── Ephemeral key fetch ────────────────────────────────────────────────────
 
   const fetchEphemeralKey = async (): Promise<string | null> => {
     logClientEvent({ url: '/session' }, 'fetch_session_token_request');
-    const tokenResponse = await fetch('/bfsi-agentic-suite/api/session');
+    // Pass agent instructions + text-only modality at key creation time.
+    // gpt-realtime-1.5 ignores post-connect session.update for instructions,
+    // so they must be embedded when the ephemeral key is minted.
+    const rootAgent = licSalesScenario[0];
+    const instructions =
+      typeof rootAgent?.instructions === 'string'
+        ? rootAgent.instructions
+        : undefined;
+    const tokenResponse = await fetch('/bfsi-agentic-suite/api/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        instructions,
+        output_modalities: ['text'],
+        transcription_language: 'hi',
+      }),
+    });
     const data = await tokenResponse.json();
     logServerEvent(data, 'fetch_session_token_response');
 
@@ -203,6 +218,10 @@ function LICSalesApp({ welcomeMessage, imageUrl, WorkflowImage, leadInfo }: LICS
   // ── Session update (turn detection) ───────────────────────────────────────
 
   const updateSession = (shouldTriggerResponse = false) => {
+    // Use SDK's updateSessionConfig — do NOT send instructions here.
+    // The SDK already sends them at connect via initialSessionConfig from the RealtimeAgent.
+    // A second raw session.update overwrites with the new GA nested format which
+    // gpt-realtime-1.5 may partially apply, dropping the instructions field.
     const turnDetection = isPTTActive
       ? null
       : {
@@ -213,13 +232,15 @@ function LICSalesApp({ welcomeMessage, imageUrl, WorkflowImage, leadInfo }: LICS
           create_response: true,
         };
 
-    sendEvent({
-      type: 'session.update',
-      session: {
-        modalities: ['text'], // always keep text-only
-        turn_detection: turnDetection,
+    updateSessionConfig({
+      outputModalities: ['text'], // text-only → routes to Sarvam TTS
+      audio: {
+        input: {
+          transcription: { model: 'gpt-4o-transcribe', language: 'hi' },
+          turnDetection: turnDetection as any,
+        },
       },
-    });
+    } as any);
 
     if (shouldTriggerResponse) {
       sendSimulatedUserMessage('hi!');

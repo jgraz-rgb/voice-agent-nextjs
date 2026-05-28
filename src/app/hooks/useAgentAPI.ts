@@ -3,7 +3,7 @@
  * Supports both streaming (SSE) and non-streaming chat endpoints.
  */
 
-const API_BASE = "https://bfsi.searchunify.com/bfsi-api/";
+const API_BASE = "https://bfsi.searchunify.com/bfsi-api";
 
 export interface APIMessage {
   role: "user" | "bot";
@@ -113,7 +113,7 @@ export async function fetchPolicies(): Promise<string[]> {
  */
 export async function checkBackendHealth(): Promise<boolean> {
   try {
-    const response = await fetch(`${API_BASE}/`, { signal: AbortSignal.timeout(2000) });
+    const response = await fetch(`${API_BASE}/poll`, { signal: AbortSignal.timeout(2000) });
     return response.ok;
   } catch {
     return false;

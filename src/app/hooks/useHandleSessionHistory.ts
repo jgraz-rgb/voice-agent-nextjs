@@ -25,6 +25,10 @@ export function useHandleSessionHistory() {
         if (!c || typeof c !== "object") return "";
         if (c.type === "input_text") return c.text ?? "";
         if (c.type === "output_text") return c.text ?? "";
+        // SDK uses output_audio for assistant audio, input_audio for user audio.
+        // Legacy "audio" name kept for backwards compatibility.
+        if (c.type === "output_audio") return c.transcript ?? "";
+        if (c.type === "input_audio") return c.transcript ?? "";
         if (c.type === "audio") return c.transcript ?? "";
         return "";
       })
@@ -51,7 +55,9 @@ export function useHandleSessionHistory() {
 
   const extractLastAssistantMessage = (history: any[] = []): any => {
     if (!Array.isArray(history)) return undefined;
-    return history.reverse().find((c: any) => c.type === 'message' && c.role === 'assistant');
+    // Use findLast (or a spread+reverse) to avoid mutating the SDK's history array in place.
+    // Mutating it with .reverse() can corrupt the SDK's internal state and cause dropped events.
+    return [...history].reverse().find((c: any) => c.type === 'message' && c.role === 'assistant');
   };
 
   const extractModeration = (obj: any) => {
@@ -88,7 +94,6 @@ export function useHandleSessionHistory() {
 
   function handleHistoryAdded(item: any) {
     console.log("[handleHistoryAdded] ", item);
-    console.log("[handleHistoryAdded] addTranscriptMessage is:", addTranscriptMessage);
     if (!item || item.type !== 'message') return;
     const itemId = item.itemId ?? item.id;
     const role = item.role;
@@ -101,41 +106,60 @@ export function useHandleSessionHistory() {
         text = "[Transcribing...]";
       }
 
-      // If the guardrail has been tripped, this message is a message that gets sent to the 
+      // If the guardrail has been tripped, this message is a message that gets sent to the
       // assistant to correct it, so we add it as a breadcrumb instead of a message.
       const guardrailMessage = sketchilyDetectGuardrailMessage(text);
       if (guardrailMessage) {
         const failureDetails = JSON.parse(guardrailMessage);
         addTranscriptBreadcrumb('Output Guardrail Active', { details: failureDetails });
       } else {
-        addTranscriptMessage(itemId, role, text);
+        addTranscriptMessage(itemId, role, text ?? "");
       }
     }
   }
 
   function handleHistoryUpdated(items: any[]) {
-    console.log("[handleHistoryUpdated] ", items);
+    if (!items || items.length === 0) return; // SDK fires an empty snapshot early — nothing to update yet
+    console.log("[handleHistoryUpdated] items count:", items.length);
     items.forEach((item: any) => {
       if (!item || item.type !== 'message') return;
 
       const itemId = item.itemId ?? item.id;
+      const role = item.role as "user" | "assistant";
       const content = Array.isArray(item.content) ? item.content : [];
       const text = extractMessageText(content);
+      const isCompleted = item.status === 'completed';
 
-      if (text) {
-        updateTranscriptMessage(itemId, text, false);
+      if (!itemId || !role) return;
+
+      // Ensure the item exists in the transcript (in case history_added was missed
+      // or fired before the role/content was fully populated).
+      addTranscriptMessage(itemId, role, text ?? "");
+
+      // For in-progress items, audio-transcript deltas are responsible for
+      // updating the text incrementally — don't overwrite with empty/partial
+      // history snapshots that arrive mid-stream and would clear what deltas wrote.
+      // Only update text from history when:
+      //   - the item is completed (final state), OR
+      //   - it's a user message (text typed, no delta path), OR
+      //   - history actually has non-empty text to set
+      if (isCompleted || role === 'user') {
+        if (text) updateTranscriptMessage(itemId, text, false);
       }
     });
   }
 
   function handleTranscriptionDelta(item: any) {
-    const itemId = item.item_id;
+    // item_id from transport events (snake_case); itemId/id from SDK history events
+    const itemId = item.item_id ?? item.itemId ?? item.id;
     const deltaText = item.delta || "";
-    console.log('[handleTranscriptionDelta] itemId:', itemId, '| delta:', JSON.stringify(deltaText));
+    // Caller injects role so we create the item on the correct side.
+    const role: "user" | "assistant" = item.role === 'user' ? 'user' : 'assistant';
+    console.log('[handleTranscriptionDelta] itemId:', itemId, '| role:', role, '| delta:', JSON.stringify(deltaText));
     if (itemId) {
-      // Create the item if it doesn't exist yet (text-modality: history_added
-      // may arrive after the first delta, so we create it eagerly here).
-      addTranscriptMessage(itemId, 'assistant', '');
+      // Create the item if it doesn't exist yet (history_added may arrive after the
+      // first delta, so we eagerly create it here with the correct role).
+      addTranscriptMessage(itemId, role, '');
       updateTranscriptMessage(itemId, deltaText, true);
     }
   }
@@ -143,15 +167,20 @@ export function useHandleSessionHistory() {
   function handleTranscriptionCompleted(item: any) {
     // History updates don't reliably end in a completed item,
     // so we need to handle finishing up when the transcription is completed.
-    const itemId = item.item_id;
+    // item_id comes from transport events (snake_case); itemId/id from SDK history events.
+    // Callers inject role='user' or role='assistant' explicitly so we never default incorrectly.
+    const itemId = item.item_id ?? item.itemId ?? item.id;
+    const role: "user" | "assistant" = item.role === "user" ? "user" : "assistant";
     const finalTranscript =
         !item.transcript || item.transcript === "\n"
         ? "[inaudible]"
         : item.transcript;
-    console.log('[handleTranscriptionCompleted] itemId:', itemId, '| raw transcript:', JSON.stringify(item.transcript), '| final:', JSON.stringify(finalTranscript));
+    console.log('[handleTranscriptionCompleted] itemId:', itemId, '| role:', role, '| final:', JSON.stringify(finalTranscript));
     if (itemId) {
+      // Ensure the item exists with the correct role before updating.
+      // addTranscriptMessage is a no-op if the item already exists.
+      addTranscriptMessage(itemId, role, finalTranscript);
       updateTranscriptMessage(itemId, finalTranscript, false);
-      // Use the ref to get the latest transcriptItems
       const transcriptItem = transcriptItems.find((i) => i.itemId === itemId);
       updateTranscriptItem(itemId, { status: 'DONE' });
 

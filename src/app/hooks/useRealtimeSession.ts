@@ -46,18 +46,41 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
 
   function handleTransportEvent(event: any) {
     switch (event.type) {
+      // ── Interruption detection ────────────────────────────────────────────
+      case "input_audio_buffer.speech_started": {
+        if (agentSpeaking) {
+          console.log('[Interrupt] 🎤 User started speaking while agent was talking — VAD interruption');
+        }
+        break;
+      }
+      // ── User speech transcription ─────────────────────────────────────────
       case "conversation.item.input_audio_transcription.completed": {
-        historyHandlersRef.current.handleTranscriptionCompleted(event);
+        console.log('[Transcribe] ✅ completed — text:', event.transcript ?? '(empty)');
+        // Inject role='user' — the raw event has no role field so handleTranscriptionCompleted
+        // would default to 'assistant', causing the user's words to appear on the wrong side.
+        historyHandlersRef.current.handleTranscriptionCompleted({ ...event, role: 'user' });
         break;
       }
+      case "conversation.item.input_audio_transcription.failed": {
+        console.warn('[Transcribe] ❌ failed —', event.error?.message ?? event.error ?? 'unknown error');
+        break;
+      }
+      // ── Agent audio transcript (OpenAI API current names) ─────────────────
+      // The API renamed response.audio_transcript.* → response.output_audio_transcript.*
+      case "response.output_audio_transcript.done":
+      // Legacy name kept as fallback in case older API versions are used
       case "response.audio_transcript.done": {
-        historyHandlersRef.current.handleTranscriptionCompleted(event);
+        // Inject role='assistant' explicitly so the item is always on the right side.
+        historyHandlersRef.current.handleTranscriptionCompleted({ ...event, role: 'assistant' });
         break;
       }
+      case "response.output_audio_transcript.delta":
+      // Legacy name kept as fallback
       case "response.audio_transcript.delta": {
-        historyHandlersRef.current.handleTranscriptionDelta(event);
+        historyHandlersRef.current.handleTranscriptionDelta({ ...event, role: 'assistant' });
         break;
       }
+      // ── Agent speaking state ──────────────────────────────────────────────
       case "response.output_audio.delta":
       case "response.output_audio.started": {
         if (!agentSpeaking) {
@@ -103,7 +126,10 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
 
   // Register all event handlers immediately on a given session instance
   const registerEventHandlers = useCallback((session: RealtimeSession) => {
+    console.log("[useRealtimeSession] registerEventHandlers called — attaching listeners to session:", session);
+
     session.on("error", (...args: any[]) => {
+      console.error("[useRealtimeSession] error event:", args[0]);
       logServerEvent({ type: "error", message: args[0] });
     });
 
@@ -115,16 +141,22 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
       historyHandlersRef.current.handleAgentToolEnd(details, agent, functionCall, result);
     });
     session.on("history_updated", (items: any[]) => {
+      console.log("[useRealtimeSession] history_updated fired, items count:", items?.length);
       historyHandlersRef.current.handleHistoryUpdated(items);
     });
     session.on("history_added", (item: any) => {
+      console.log("[useRealtimeSession] history_added fired:", item);
       historyHandlersRef.current.handleHistoryAdded(item);
     });
     session.on("guardrail_tripped", (details: any, agent: any, guardrail: any) => {
       historyHandlersRef.current.handleGuardrailTripped(details, agent, guardrail);
     });
 
-    session.on("transport_event", handleTransportEvent);
+    // Raw transport log — log every event type so we can confirm events are flowing
+    session.on("transport_event", (event: any) => {
+      console.log("[transport_event] type:", event?.type);
+      handleTransportEvent(event);
+    });
   }, [historyHandlersRef]);
 
   const connect = useCallback(
@@ -142,6 +174,8 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
       const ek = await getEphemeralKey();
       const rootAgent = initialAgents[0];
 
+      const realtimeModel = process.env.NEXT_PUBLIC_REALTIME_MODEL || 'gpt-realtime-1.5';
+
       const session = new RealtimeSession(rootAgent, {
         transport: new OpenAIRealtimeWebRTC({
           audioElement,
@@ -150,11 +184,11 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
             return pc;
           },
         }),
-        model: process.env.NEXT_PUBLIC_REALTIME_MODEL || 'gpt-realtime',
+        model: realtimeModel,
         config: {
           inputAudioTranscription: {
             model: 'gpt-4o-transcribe',
-            language:"en"
+            language: 'en',
           },
         },
         outputGuardrails: outputGuardrails ?? [],
@@ -164,8 +198,16 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
       // Attach handlers BEFORE connecting to avoid missing early events
       registerEventHandlers(session);
 
+      // Sanity check: verify that the session's on() method actually registers listeners
+      let _historyUpdatedReceived = false;
+      session.once('history_updated', (items: any[]) => {
+        _historyUpdatedReceived = true;
+        console.log('[useRealtimeSession] ✅ once(history_updated) fired — EventEmitter works! items:', items?.length);
+      });
+
       sessionRef.current = session;
       await session.connect({ apiKey: ek });
+      console.log('[useRealtimeSession] connect() resolved — _historyUpdatedReceived:', _historyUpdatedReceived);
       updateStatus('CONNECTED');
     },
     [callbacks, updateStatus, registerEventHandlers],
@@ -182,6 +224,7 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
   };
 
   const interrupt = useCallback(() => {
+    console.log('[Interrupt] 🛑 interrupt() called — stopping agent response');
     sessionRef.current?.interrupt();
   }, []);
 
@@ -192,6 +235,13 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
 
   const sendEvent = useCallback((ev: any) => {
     sessionRef.current?.transport.sendEvent(ev);
+  }, []);
+
+  // Use SDK's updateSessionConfig so the correct nested GA format is sent.
+  // This is the proper way to update turn_detection etc. without bypassing
+  // the SDK's payload builder (which adds type:"realtime", model, etc.).
+  const updateSessionConfig = useCallback((config: any) => {
+    sessionRef.current?.transport.updateSessionConfig(config);
   }, []);
 
   const mute = useCallback((m: boolean) => {
@@ -215,6 +265,7 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
     disconnect,
     sendUserText,
     sendEvent,
+    updateSessionConfig,
     mute,
     pushToTalkStart,
     pushToTalkStop,

@@ -226,7 +226,7 @@ function Transcript({
           disabled={!canSend || !userText.trim()}
           className="bg-gray-900 text-white rounded-full px-2 py-2 disabled:opacity-50"
         >
-          <Image src="arrow.svg" alt="Send" width={24} height={24} />
+          <Image src="/bfsi-agentic-suite/arrow.svg" alt="Send" width={24} height={24} />
         </button>
       </div>
     </div>

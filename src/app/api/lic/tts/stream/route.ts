@@ -4,7 +4,7 @@ import { SarvamAIClient } from 'sarvamai';
 type SarvamSocket = Awaited<ReturnType<InstanceType<typeof SarvamAIClient>['textToSpeechStreaming']['connect']>>;
 
 const SAMPLE_RATE = 22050;
-const SOCKET_IDLE_TIMEOUT_MS = 60_000; // close socket after 60 s of no requests
+const SOCKET_IDLE_TIMEOUT_MS = 120_000; // close socket after 120 s of no requests
 
 // ── Warm-socket singleton ─────────────────────────────────────────────────────
 // A single WebSocket connection is kept alive across requests so subsequent
@@ -194,7 +194,7 @@ export async function POST(req: NextRequest) {
         sendEvent({ type: 'error', message: 'Sarvam TTS timeout' });
         finish();
       }
-    }, 15_000);
+    }, 60_000);
 
     // Clean up timeout when the stream closes
     writer.closed.then(() => clearTimeout(timeout)).catch(() => clearTimeout(timeout));

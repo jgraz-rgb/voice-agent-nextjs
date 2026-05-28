@@ -4,8 +4,8 @@ export default function LICSalesPage() {
   return (
     <LICSalesAppPage
       welcomeMessage="SearchUnify's Voice-based AI Lead Qualification Agentic Solution"
-      imageUrl="./LICHFL.svg"
-      WorkflowImage="/AI_Lead_Qualification_Agentic_Solution.png"
+      imageUrl="/bfsi-agentic-suite/LICHFL.svg"
+      WorkflowImage="/bfsi-agentic-suite/AI_Lead_Qualification_Agentic_Solution.png"
     />
   );
 }

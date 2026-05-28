@@ -37,7 +37,7 @@ const FILLER_CATEGORIES = {
     "एक सेकंड…",
     "… एक सेकंड…",
     "उम्… हाँ, एक सेकंड…",
-    "हम्म्म… ज़रा सोचता हूँ…",
+    "… ज़रा सोचता हूँ…",
   ],
   // Turns 3-5: warm acknowledgement — signals the agent is listening
   acknowledgement: [
@@ -288,6 +288,7 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
       const prev = ttsQueueRef.current;
       ttsQueueRef.current = prev.then(async () => {
         if (generation !== generationRef.current || disconnectedRef.current) {
+          console.log(`[TTS] ⏭️ skipping stale chunk (gen ${generation} vs current ${generationRef.current})`);
           inFlightControllersRef.current.delete(controller);
           return;
         }
@@ -302,6 +303,7 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
         };
 
         try {
+          console.log(`[TTS] 📤 POST ${LIC_TTS_STREAM_URL} — gen:${generation} text: "${cleaned.slice(0, 80)}${cleaned.length > 80 ? '…' : ''}"`);
           const response = await fetch(LIC_TTS_STREAM_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -309,6 +311,7 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
             signal: controller.signal,
           });
 
+          console.log(`[TTS] 📩 Response status: ${response.status} ok:${response.ok}`);
           if (!response.ok || !response.body) {
             const body = await response.text().catch(() => '');
             throw new Error(`LIC TTS stream failed (${response.status}): ${body}`);
@@ -338,12 +341,14 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
               if (event.type === 'audio' && event.audio) {
                 audioChunks.push(event.audio);
               } else if (event.type === 'error') {
-                console.error('[LICSales TTS] stream error:', event.message);
+                console.error('[TTS] ❌ stream error:', event.message);
               }
             }
 
             if (done) break;
           }
+
+          console.log(`[TTS] 📥 Sarvam returned ${audioChunks.length} audio chunk(s) for text: "${cleaned.slice(0, 60)}${cleaned.length > 60 ? '…' : ''}"`);
 
           if (audioChunks.length > 0 && generation === generationRef.current && !disconnectedRef.current) {
             if (!firstAudioPlayedRef.current && userSpeechStopTimeRef.current !== null) {
@@ -410,6 +415,7 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
         trimmed.length >= TTS_FORCE_FLUSH_CHARS;
       if (!shouldFlush) return;
 
+      console.log(`[TTS] 🔀 flushing chunk (force=${force}, len=${trimmed.length}): "${trimmed.slice(0, 80)}${trimmed.length > 80 ? '…' : ''}"`);
       pendingChunkRef.current = '';
       queueSarvamChunk(trimmed, generation, itemId);
     },
@@ -540,7 +546,13 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
     switch (event.type) {
       // ── User speech transcription ────────────────────────────────────────
       case 'conversation.item.input_audio_transcription.completed': {
-        historyHandlersRef.current.handleTranscriptionCompleted(event);
+        console.log('[Transcribe] ✅ completed — text:', event.transcript ?? '(empty)');
+        historyHandlersRef.current.handleTranscriptionCompleted({ ...event, role: 'user' });
+        break;
+      }
+
+      case 'conversation.item.input_audio_transcription.failed': {
+        console.warn('[Transcribe] ❌ failed —', event.error?.message ?? event.error ?? 'unknown error');
         break;
       }
 
@@ -557,7 +569,7 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
         // Cancel any in-flight or queued filler from the previous turn
         fillerGenerationRef.current += 1;
         if (agentSpeakingRef.current) {
-          console.log('[LICSales] User speech detected while agent speaking — interrupting stream');
+          console.log('[Interrupt] 🎤 User started speaking while agent was talking — interrupting TTS stream');
           generationRef.current += 1;
           resetTTSState();
           stopAudio();
@@ -575,21 +587,22 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
         // • If the gap is 1.5–3 s, the filler plays to completion; the real
         //   chunk is queued behind it on ttsQueueRef and plays right after.
         // • Beyond 3 s the filler has long finished before the chunk arrives.
-        if (!fillerPlayedThisTurnRef.current && !disconnectedRef.current) {
-          fillerTimerRef.current = setTimeout(() => {
-            fillerTimerRef.current = null;
-            if (!fillerPlayedThisTurnRef.current && !disconnectedRef.current) {
-              playFillerAudio();
-            }
-          }, 1500);
-        }
+        // if (!fillerPlayedThisTurnRef.current && !disconnectedRef.current) {
+        //   fillerTimerRef.current = setTimeout(() => {
+        //     fillerTimerRef.current = null;
+        //     if (!fillerPlayedThisTurnRef.current && !disconnectedRef.current) {
+        //       playFillerAudio();
+        //     }
+        //   }, 1500);
+        // }
         break;
       }
 
       // ── Agent text output (TEXT modality) ────────────────────────────────
-      case 'response.text.delta': {
+      case 'response.output_text.delta': {
         const delta: string = event.delta ?? '';
         if (responseTextRef.current === '') {
+          console.log('[TTS] 🟢 response.output_text.delta — first delta received, gen:', generationRef.current + 1);
           // Mark that real TTS content has arrived so the filler gate can skip
           // the filler if its 1.5 s timer hasn't fired yet.
           firstChunkArrivedRef.current = true;
@@ -620,7 +633,7 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
         break;
       }
 
-      case 'response.text.done': {
+      case 'response.output_text.done': {
         finalTranscriptRef.current = event.text ?? responseTextRef.current;
         const generation = generationRef.current;
         const itemId = currentItemIdRef.current;
@@ -696,15 +709,10 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
       historyHandlersRef.current.handleAgentToolEnd(details, agent, functionCall, result);
     });
     session.on('history_updated', (items: any[]) => {
-      // If the SDK writes the full assistant text via history_updated, mark
-      // the transcript as finalized so deferred onStart callbacks don't
-      // append duplicate text on top of what's already showing.
-      const hasAssistantText = items.some(
-        (i: any) => i?.role === 'assistant' && Array.isArray(i.content) && i.content.some((c: any) => c.text || c.transcript)
-      );
-      if (hasAssistantText) {
-        transcriptFinalizedRef.current = true;
-      }
+      // Do NOT set transcriptFinalizedRef here — doing so blocks revealText()
+      // callbacks in the TTS queue from appending text while audio is playing.
+      // transcriptFinalizedRef is set to true at the end of the TTS queue
+      // (in the response.text.done handler) once all chunks have been sent.
       historyHandlersRef.current.handleHistoryUpdated(items);
     });
     session.on('history_added', (item: any) => {
@@ -713,7 +721,9 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
     session.on('guardrail_tripped', (details: any, agent: any, guardrail: any) => {
       historyHandlersRef.current.handleGuardrailTripped(details, agent, guardrail);
     });
-    session.on('transport_event', handleTransportEvent);
+    session.on('transport_event', (event: any) => {
+      handleTransportEvent(event);
+    });
   }, [historyHandlersRef]);
 
   // ── Connect ────────────────────────────────────────────────────────────────
@@ -747,6 +757,8 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
             })()
           : undefined;
 
+      const realtimeModel = process.env.NEXT_PUBLIC_REALTIME_MODEL || 'gpt-realtime-1.5';
+
       const session = new RealtimeSession(rootAgent, {
         transport: new OpenAIRealtimeWebRTC({
           audioElement: silentAudio,
@@ -755,9 +767,8 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
             return pc;
           },
         }),
-        model: process.env.NEXT_PUBLIC_REALTIME_MODEL || 'gpt-realtime',
+        model: realtimeModel,
         config: {
-          // Input audio transcription still needed so we can hear the user
           inputAudioTranscription: {
             model: 'gpt-4o-transcribe',
             language: 'hi',
@@ -773,17 +784,20 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
       await session.connect({ apiKey: ek });
 
       // ── Force text-only output modality ──────────────────────────────────
-      // This tells OpenAI NOT to synthesise audio — we handle TTS externally.
-      session.transport.sendEvent({
-        type: 'session.update',
-        session: {
-          modalities: ['text'],        // text only — no audio output from OpenAI
-          turn_detection: {
-            type: 'server_vad',
-            threshold: MIC_VAD_THRESHOLD, // higher = less sensitive, reduces false triggers from noise
-            prefix_padding_ms: MIC_PREFIX_PADDING_MS,
-            silence_duration_ms: MIC_SILENCE_DURATION_MS,
-            create_response: true,
+      // Use SDK's updateSessionConfig so the GA nested format is sent correctly.
+      // Raw sendEvent with old keys is silently ignored by gpt-realtime-1.5.
+      session.transport.updateSessionConfig({
+        outputModalities: ['text'], // text-only — no audio from OpenAI, we use Sarvam TTS
+        audio: {
+          input: {
+            transcription: { model: 'gpt-4o-transcribe', language: 'hi' },
+            turnDetection: {
+              type: 'server_vad',
+              threshold: MIC_VAD_THRESHOLD,
+              prefixPaddingMs: MIC_PREFIX_PADDING_MS,
+              silenceDurationMs: MIC_SILENCE_DURATION_MS,
+              createResponse: true,
+            },
           },
         },
       } as any);
@@ -812,6 +826,7 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
   const interrupt = useCallback(() => {
     // Always safe to do locally — stop audio and clear buffers regardless of
     // transport state so we never block on a disconnected WebRTC channel.
+    console.log('[Interrupt] 🛑 interrupt() called — stopping TTS and agent response');
     generationRef.current += 1;
     resetTTSState();
     stopAudio();
@@ -832,6 +847,10 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
     sessionRef.current?.transport.sendEvent(ev);
   }, []);
 
+  const updateSessionConfig = useCallback((config: any) => {
+    sessionRef.current?.transport.updateSessionConfig(config);
+  }, []);
+
   const mute = useCallback((m: boolean) => {
     sessionRef.current?.mute(m);   // mutes microphone input
     setMuted(m);                    // also mute TTS playback
@@ -843,6 +862,7 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
     disconnect,
     sendUserText,
     sendEvent,
+    updateSessionConfig,
     mute,
     interrupt,
   } as const;
