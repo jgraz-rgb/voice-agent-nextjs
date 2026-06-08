@@ -41,7 +41,7 @@ const FILLER_CATEGORIES = {
   ],
   // Turns 3-5: warm acknowledgement — signals the agent is listening
   acknowledgement: [
-    "जी…",
+    "हां, समझ गया. मैं अभी देख रहा हूं, please hold on...",
     "जी जी…",
     "हाँ जी…",
     "अच्छा जी…",
@@ -112,6 +112,35 @@ function shuffleArray<T>(arr: T[]): T[] {
  *   rather than the word "lic".
  * - Strip markdown bold/italic markers that would be spoken literally.
  */
+/**
+ * Returns true if the text looks like raw JSON tool arguments that leaked into
+ * the output_text stream (e.g. `{"field_name":"property_stage","field_value":...}`).
+ * These should never be spoken aloud — they are internal tool call data.
+ */
+function isToolArgumentJSON(text: string): boolean {
+  const t = text.trim();
+  if (!t.startsWith('{') && !t.startsWith('[')) return false;
+  try {
+    const parsed = JSON.parse(t);
+    if (typeof parsed === 'object' && parsed !== null) {
+      // Heuristic: if the object has known tool argument keys, it's a tool call
+      const keys = Object.keys(parsed);
+      if (keys.includes('field_name') || keys.includes('field_value') ||
+          keys.includes('lead_category') || keys.includes('call_disposition') ||
+          keys.includes('pan_number') || keys.includes('pincode') ||
+          keys.includes('query') || keys.includes('subject') ||
+          keys.includes('transcript') || keys.includes('to_email')) {
+        return true;
+      }
+      // Also treat any top-level JSON object with all-lowercase snake_case keys as suspect
+      if (keys.length > 0 && keys.every(k => /^[a-z_]+$/.test(k))) return true;
+    }
+  } catch {
+    // Not valid JSON — not a tool argument leak
+  }
+  return false;
+}
+
 function normaliseTTSText(text: string): string {
   return text
     // ── Abbreviation pronunciation ──────────────────────────────────────────
@@ -634,7 +663,17 @@ export function useLICSalesSession(callbacks: LICSalesSessionCallbacks = {}) {
       }
 
       case 'response.output_text.done': {
-        finalTranscriptRef.current = event.text ?? responseTextRef.current;
+        const fullText = event.text ?? responseTextRef.current;
+        // If the entire output_text item is JSON tool arguments that leaked into
+        // the text stream, discard it entirely — do not speak it via Sarvam TTS.
+        if (isToolArgumentJSON(fullText)) {
+          console.warn('[TTS] ⚠️ Suppressed tool-argument JSON from TTS:', fullText.slice(0, 120));
+          responseTextRef.current = '';
+          pendingChunkRef.current = '';
+          currentItemIdRef.current = null;
+          break;
+        }
+        finalTranscriptRef.current = fullText;
         const generation = generationRef.current;
         const itemId = currentItemIdRef.current;
         // Flush any remaining buffered text as the final TTS chunk.

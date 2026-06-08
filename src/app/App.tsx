@@ -46,6 +46,9 @@ const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
 };
 
 import useAudioDownload from "./hooks/useAudioDownload";
+import { PhoneModePanel } from "./components/PhoneModePanel";
+
+// ─── App ──────────────────────────────────────────────────────────────────────
 
 function App({ welcomeMessage, imageUrl, WorkflowImage }) {
   const searchParams = useSearchParams()!;
@@ -61,6 +64,10 @@ function App({ welcomeMessage, imageUrl, WorkflowImage }) {
   const [selectedAgentConfigSet, setSelectedAgentConfigSet] = useState<
     RealtimeAgent[] | null
   >(null);
+
+  // When true the user is testing via phone — skip all WebRTC session logic
+  const [phoneMode, setPhoneMode] = useState<boolean>(false);
+  const phoneModeRef = useRef<boolean>(false);
 
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   // Ref to identify whether the latest agent switch came from an automatic handoff
@@ -175,10 +182,15 @@ function App({ welcomeMessage, imageUrl, WorkflowImage }) {
   }, [searchParams, fallbackAgentConfigKey, pathAgentConfigKey]);
 
   useEffect(() => {
+    phoneModeRef.current = phoneMode;
+  }, [phoneMode]);
+
+  useEffect(() => {
+    if (phoneModeRef.current || phoneMode) return;
     if (selectedAgentName && sessionStatus === "DISCONNECTED") {
       connectToRealtime();
     }
-  }, [selectedAgentName]);
+  }, [selectedAgentName, phoneMode]);
 
   useEffect(() => {
     if (
@@ -570,6 +582,36 @@ function App({ welcomeMessage, imageUrl, WorkflowImage }) {
             {welcomeMessage}
           </div>
         </div>
+
+        <div className="flex items-center gap-3">
+          {/* Browser / Phone toggle */}
+          <div className="flex items-center gap-1 bg-gray-200 rounded-lg p-1 text-sm font-medium">
+            <button
+              onClick={() => {
+                phoneModeRef.current = false;
+                setPhoneMode(false);
+                if (sessionStatus === 'DISCONNECTED') connectToRealtime();
+              }}
+              className={`px-3 py-1 rounded-md transition-colors ${!phoneMode ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Browser
+            </button>
+            <button
+              onClick={async () => {
+                phoneModeRef.current = true;
+                setPhoneMode(true);
+                if (sessionStatus !== 'DISCONNECTED') await disconnectFromRealtime();
+              }}
+              className={`px-3 py-1 rounded-md transition-colors ${phoneMode ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Phone
+            </button>
+          </div>
+
+          {/* Phone mode lease panel */}
+          {phoneMode && <PhoneModePanel agentKey={agentSetKey !== 'default' ? agentSetKey : 'aaaInsurance'} />}
+        </div>
+
         {/* <div className="flex items-center">
           <label className="flex items-center text-base gap-1 mr-2 font-medium">
             Scenario

@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "server:dev": "tsx watch --tsconfig server/tsconfig.json server/server.ts",
+    "twilio:set-webhook": "node -e \"const t=require('twilio');const c=t(process.env.TWILIO_ACCOUNT_SID,process.env.TWILIO_AUTH_TOKEN);c.incomingPhoneNumbers.list({phoneNumber:process.env.TWILIO_PHONE_NUMBER}).then(ns=>c.incomingPhoneNumbers(ns[0].sid).update({voiceUrl:'https://'+process.env.PUBLIC_DOMAIN+'/twilio/incoming-call',voiceMethod:'POST'})).then(n=>console.log('Webhook set:',n.voiceUrl)).catch(e=>console.error(e.message))\"",
+    "dev:all": "concurrently \"npm run dev\" \"npm run server:dev\"",
+    "server:start": "tsx run --tsconfig server/tsconfig.json server/server.ts",
+    "start:all": "concurrently \"npm run start\" \"npm run server:start\""
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -63,7 +68,14 @@
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^11.0.4",
     "vaul": "^1.1.2",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "fastify": "^5.6.1",
+    "@fastify/cors": "^11.1.0",
+    "@fastify/formbody": "^8.0.2",
+    "@fastify/websocket": "^11.2.0",
+    "twilio": "^5.10.2",
+    "tsx": "^4.20.6",
+    "concurrently": "^9.2.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

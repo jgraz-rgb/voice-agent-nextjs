@@ -1,12 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
+import { allAgentSets } from "@/app/agentConfigs";
 
 const DEFAULT_INSTRUCTIONS = "You are a helpful assistant.";
 
+function resolveInstructions(body: { instructions?: string; agentKey?: string }): string {
+  if (body.instructions) return body.instructions;
+  if (body.agentKey) {
+    const agents = allAgentSets[body.agentKey];
+    if (agents?.length) {
+      const instructions = agents[0]?.instructions;
+      if (typeof instructions === 'string') return instructions;
+    }
+  }
+  return DEFAULT_INSTRUCTIONS;
+}
+
+// Stricter VAD for phone calls with background noise (LIC agent).
+// Higher threshold ignores low-energy noise; longer silence_duration_ms
+// avoids cutting off speech mid-sentence; prefix_padding_ms catches fast
+// utterance starts without false-triggering on ambient sound.
+// Phone lines (G.711 μ-law, 8kHz) carry significant line noise, so the
+// threshold is set aggressively high to avoid the agent reacting to static,
+// breathing, or background chatter as if it were speech.
+const LIC_TURN_DETECTION = {
+  type: 'server_vad',
+  threshold: 0.85,          // default 0.5 — phone lines are noisy, only fire on clear speech
+  silence_duration_ms: 900, // default 500 — wait longer before committing turn
+  prefix_padding_ms: 300,   // default 300 — keep leading edge of utterance
+};
+
 async function createSession(body: {
   instructions?: string;
+  agentKey?: string;
   output_modalities?: string[];
   voice?: string;
   transcription_language?: string;
+  input_audio_format?: string;
+  output_audio_format?: string;
 }) {
   const model = process.env.NEXT_PUBLIC_REALTIME_MODEL || "gpt-realtime-1.5";
 
@@ -20,20 +50,30 @@ async function createSession(body: {
       session: {
         type: "realtime",
         model,
-        instructions: body.instructions || DEFAULT_INSTRUCTIONS,
+        instructions: resolveInstructions(body),
         output_modalities: body.output_modalities ?? ["audio"],
         audio: {
           input: {
             transcription: {
               model: "gpt-4o-transcribe",
-              language: body.transcription_language ?? "en",
+              language: body.transcription_language ?? (body.agentKey === 'licSales' ? 'hi' : 'en'),
+              ...(body.agentKey === 'licSales' ? {
+                prompt: "The caller speaks Hindi or English . Common words: नमस्ते, हाँ, नहीं, ठीक है, loan, home loan, मकान, property, EMI, yes, no, hello.",
+              } : {}),
             },
-            turn_detection: {
-              type: "server_vad",
-            },
+            // Far-field noise reduction strips telephone line noise / background
+            // chatter before VAD runs, so the agent doesn't react to phantom
+            // speech on a real phone line. LIC runs over Twilio (phone) only.
+            ...(body.agentKey === 'licSales'
+              ? { noise_reduction: { type: 'far_field' } }
+              : {}),
+            turn_detection: body.agentKey === 'licSales'
+              ? LIC_TURN_DETECTION
+              : { type: 'server_vad' },
           },
           output: {
             voice: body.voice ?? "verse",
+            ...(body.output_audio_format ? { format: body.output_audio_format } : {}),
           },
         },
       },

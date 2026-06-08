@@ -24,6 +24,7 @@ import { calculateLeadScore } from '@/app/agentConfigs/LICSales/scoring';
 import { createModerationGuardrail } from '@/app/agentConfigs/guardrails';
 
 import useAudioDownload from '@/app/hooks/useAudioDownload';
+import { PhoneModePanel } from '@/app/components/PhoneModePanel';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -48,6 +49,8 @@ function LICSalesApp({ welcomeMessage, imageUrl, WorkflowImage, leadInfo }: LICS
   const { logClientEvent, logServerEvent } = useEvent();
 
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>('DISCONNECTED');
+  const [phoneMode, setPhoneMode] = useState(false);
+  const phoneModeRef = useRef(false);
   const [userText, setUserText] = useState('');
   const [isPTTActive, setIsPTTActive] = useState(false);
   const [isPTTUserSpeaking, setIsPTTUserSpeaking] = useState(false);
@@ -90,11 +93,19 @@ function LICSalesApp({ welcomeMessage, imageUrl, WorkflowImage, leadInfo }: LICS
     // Pass agent instructions + text-only modality at key creation time.
     // gpt-realtime-1.5 ignores post-connect session.update for instructions,
     // so they must be embedded when the ephemeral key is minted.
+    // We also inject pre-collected lead info directly into the instructions so
+    // the agent has it on first response without needing a getLeadState call.
     const rootAgent = licSalesScenario[0];
-    const instructions =
+    let instructions =
       typeof rootAgent?.instructions === 'string'
         ? rootAgent.instructions
         : undefined;
+
+    if (instructions && leadInfo) {
+      const leadContext = `\n\n## PRE-COLLECTED LEAD DATA (already available — do NOT ask again)\n- first_name: ${leadInfo.firstName}\n- last_name: ${leadInfo.lastName}\n- phone_number: ${leadInfo.phoneNumber}\n- property_location: ${leadInfo.propertyLocation}\n- preferred_area_office: ${leadInfo.areaOffice}\n\nStart by calling getLeadState to load this into your state, then greet the lead by name.`;
+      instructions = instructions + leadContext;
+    }
+
     const tokenResponse = await fetch('/bfsi-agentic-suite/api/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -425,6 +436,33 @@ function LICSalesApp({ welcomeMessage, imageUrl, WorkflowImage, leadInfo }: LICS
             <Image src={imageUrl} alt="Logo" width={60} height={30} className="mr-2" />
           )}
           <div>{welcomeMessage}</div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {/* Browser / Phone toggle */}
+          <div className="flex items-center gap-1 bg-gray-200 rounded-lg p-1 text-sm font-medium">
+            <button
+              onClick={() => {
+                phoneModeRef.current = false;
+                setPhoneMode(false);
+              }}
+              className={`px-3 py-1 rounded-md transition-colors ${!phoneMode ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Browser
+            </button>
+            <button
+              onClick={async () => {
+                phoneModeRef.current = true;
+                setPhoneMode(true);
+                if (sessionStatus !== 'DISCONNECTED') await disconnectFromRealtime();
+              }}
+              className={`px-3 py-1 rounded-md transition-colors ${phoneMode ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Phone
+            </button>
+          </div>
+
+          {phoneMode && <PhoneModePanel agentKey="licSales" leadInfo={leadInfo} />}
         </div>
       </div>
 

@@ -4,24 +4,12 @@
   "phone_number": "6235067123",
   "property_location": "Delhi",
   "preferred_area_office": "Greater Kailash",
-  "call_start_time": "2026-04-28T16:41:01.883Z",
+  "call_start_time": "2026-06-08T09:36:55.807Z",
   "property_stage": "searching",
-  "rera_registered": false,
-  "loan_timeline_months": 4,
-  "loan_amount_lakhs": 45,
+  "loan_timeline_months": "6",
+  "rera_registered": "no",
+  "loan_amount_lakhs": "45",
   "employment_type": "salaried",
-  "employer_detail": "Graze IT Interactive",
-  "employment_tenure_years": 4,
-  "monthly_income_range": "1.5 lakh",
-  "pan_number": "PWYPS0602B",
-  "existing_emi_amount": 0,
-  "existing_emi_details": "No existing EMI",
-  "co_applicant": "no",
-  "competing_lenders": [
-    "PNB",
-    "SBI",
-    "other PSU banks"
-  ],
-  "lichfl_preference": "considering_among_other_options",
-  "preferred_callback_time": "शाम 4 बजे"
+  "employer_detail": "BN Enterprises",
+  "employment_tenure_years": "4"
 }

@@ -1,6 +1,6 @@
 import { RealtimeAgent } from '@openai/agents/realtime'
 import { getNextResponseFromSupervisor } from './supervisorAgent';
-
+import { TwilioRealtimeTransportLayer } from '@openai/agents-extensions';
 export const chatAgent = new RealtimeAgent({
   name: 'chatAgent',
   voice: 'sage',
