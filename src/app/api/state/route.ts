@@ -49,3 +49,15 @@ export async function GET() {
     return NextResponse.json({});
   }
 }
+
+export async function DELETE() {
+  try {
+    await fs.mkdir(DATA_DIR, { recursive: true });
+    await fs.writeFile(STATE_PATH, "{}", "utf-8");
+    console.log("[/api/state DELETE] State cleared");
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("[/api/state DELETE] Error clearing state:", error);
+    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+  }
+}

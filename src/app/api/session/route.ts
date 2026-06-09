@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { promises as fs } from "fs";
+import path from "path";
 import { allAgentSets } from "@/app/agentConfigs";
 
 const DEFAULT_INSTRUCTIONS = "You are a helpful assistant.";
+
 
 function resolveInstructions(body: { instructions?: string; agentKey?: string }): string {
   if (body.instructions) return body.instructions;
@@ -29,6 +32,23 @@ const LIC_TURN_DETECTION = {
   prefix_padding_ms: 300,   // default 300 — keep leading edge of utterance
 };
 
+async function buildLeadContext(): Promise<string> {
+  try {
+    const statePath = path.join(process.cwd(), 'data', 'session_state.json');
+    const raw = await fs.readFile(statePath, 'utf-8');
+    const state = JSON.parse(raw) as Record<string, unknown>;
+    const firstName = state.first_name ?? '';
+    const lastName  = state.last_name ?? '';
+    const phone     = state.phone_number ?? '';
+    const location  = state.property_location ?? '';
+    const office    = state.preferred_area_office ?? '';
+    if (!firstName && !lastName && !phone && !location && !office) return '';
+    return `\n\n## PRE-COLLECTED LEAD DATA (already available — do NOT ask again)\n- first_name: ${firstName}\n- last_name: ${lastName}\n- phone_number: ${phone}\n- property_location: ${location}\n- preferred_area_office: ${office}\n\nStart by calling getLeadState to load this into your state, then greet the lead by name.`;
+  } catch {
+    return '';
+  }
+}
+
 async function createSession(body: {
   instructions?: string;
   agentKey?: string;
@@ -37,6 +57,8 @@ async function createSession(body: {
   transcription_language?: string;
   input_audio_format?: string;
   output_audio_format?: string;
+  inject_lead_state?: boolean;
+  tools?: unknown[];
 }) {
   const model = process.env.NEXT_PUBLIC_REALTIME_MODEL || "gpt-realtime-1.5";
 
@@ -50,8 +72,9 @@ async function createSession(body: {
       session: {
         type: "realtime",
         model,
-        instructions: resolveInstructions(body),
+        instructions: resolveInstructions(body) + (body.inject_lead_state ? await buildLeadContext() : ''),
         output_modalities: body.output_modalities ?? ["audio"],
+        ...(body.tools ? { tools: body.tools } : {}),
         audio: {
           input: {
             transcription: {

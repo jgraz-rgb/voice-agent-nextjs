@@ -1,0 +1,28 @@
+# syntax=docker/dockerfile:1.6
+
+FROM node:20-alpine AS base
+RUN apk add --no-cache libc6-compat
+WORKDIR /src
+
+FROM base AS deps
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+FROM node:20-alpine AS runner
+WORKDIR /src
+
+ENV NODE_ENV=production
+
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S fastify -G nodejs -u 1001
+
+COPY --from=deps /src/node_modules ./node_modules
+COPY package.json ./package.json
+COPY server ./server
+
+RUN mkdir -p /src/data && chown -R fastify:nodejs /src/data
+
+USER fastify
+EXPOSE 5050
+
+CMD ["node_modules/.bin/tsx", "--tsconfig", "server/tsconfig.json", "server/server.ts"]

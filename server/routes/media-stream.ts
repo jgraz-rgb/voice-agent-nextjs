@@ -129,10 +129,28 @@ export async function prewarmOpenAI(callSid: string, agentKey: string): Promise<
 
   try {
     const outputModalities = isLic ? ['text'] : ['audio'];
-    const sessionRes = await fetch('http://localhost:3000/bfsi-agentic-suite/api/session', {
+
+    // Fetch agent-specific tool schemas so OpenAI knows which tools the agent
+    // can call during the phone call (browser mode gets this automatically from
+    // the Agents SDK; phone mode must pass them explicitly at session creation).
+    let agentTools: unknown[] | undefined;
+    try {
+      const toolsRes = await fetch(`https://bfsi.searchunify.com/bfsi-agentic-suite/api/tools?agentKey=${agentKey}`);
+      if (toolsRes.ok) {
+        const toolsData = await toolsRes.json();
+        if (Array.isArray(toolsData.tools) && toolsData.tools.length > 0) {
+          agentTools = toolsData.tools;
+          logger.info('[PREWARM] Fetched tool schemas', { callSid, agentKey, count: agentTools!.length });
+        }
+      }
+    } catch (err: any) {
+      logger.warn('[PREWARM] Could not fetch tool schemas — proceeding without tools', { callSid, agentKey, err: err.message });
+    }
+
+    const sessionRes = await fetch('https://bfsi.searchunify.com/bfsi-agentic-suite/api/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ agentKey, output_modalities: outputModalities }),
+      body: JSON.stringify({ agentKey, output_modalities: outputModalities, inject_lead_state: isLic, ...(agentTools ? { tools: agentTools } : {}) }),
     });
     const sessionData = await sessionRes.json();
 
@@ -278,6 +296,7 @@ export async function mediaStreamRoute(fastify: FastifyInstance) {
     let responseCancelled = false;
     let responseFlushed = false;
     let isLic = false;
+    let activeAgentKey = 'aaaInsurance';
     // Persistent Sarvam session for the call lifetime (LIC only); destroyed on call end.
     let callSarvam: ReturnType<typeof createSarvamStream> | null = null;
 
@@ -408,6 +427,10 @@ export async function mediaStreamRoute(fastify: FastifyInstance) {
         ws.send(JSON.stringify(isLic ? buildGreetingResponse() : { type: 'response.create' }));
       });
 
+      // Track whether the current response output item is a function_call so we
+      // skip feeding its argument deltas (JSON) into the Sarvam TTS chunker.
+      let isToolCallItem = false;
+
       ws.on('message', (rawMsg: Buffer | string) => {
         try {
           const event = JSON.parse(rawMsg.toString());
@@ -420,10 +443,17 @@ export async function mediaStreamRoute(fastify: FastifyInstance) {
             responseActive = true;
             responseCancelled = false;
             responseFlushed = false;
+            isToolCallItem = false;
             if (isLic) {
               chunker?.reset();
               prepareSarvamForResponse();
             }
+          }
+
+          // Detect function_call output items so their JSON argument deltas are
+          // not sent to Sarvam TTS. Reset when a new text item starts.
+          if (event.type === 'response.output_item.added') {
+            isToolCallItem = event.item?.type === 'function_call';
           }
 
           if (event.type === 'input_audio_buffer.speech_started') {
@@ -468,7 +498,8 @@ export async function mediaStreamRoute(fastify: FastifyInstance) {
           }
 
           // ── LIC: text → Sarvam streaming TTS ───────────────────────────────
-          if (isLic && chunker) {
+          // Skip text deltas that belong to function_call items (JSON args, not speech).
+          if (isLic && chunker && !isToolCallItem) {
             if (event.type === 'response.output_text.delta' && event.delta) {
               chunker.push(event.delta);
             }
@@ -498,34 +529,27 @@ export async function mediaStreamRoute(fastify: FastifyInstance) {
             });
           }
 
-          // ── Server-side tool call execution (LIC) ──────────────────────────
+          // ── Server-side tool call execution ────────────────────────────────
           // OpenAI Realtime emits response.function_call_arguments.done when a
-          // tool call is complete. We execute it here and send the result back so
-          // OpenAI can continue the conversation.
-          if (isLic && event.type === 'response.function_call_arguments.done') {
+          // tool call is complete. Forward to /api/tools so all agents' tools
+          // run correctly on phone calls (browser mode runs execute() client-side).
+          if (event.type === 'response.function_call_arguments.done') {
             const callId: string = event.call_id ?? '';
             const fnName: string = event.name ?? '';
             let args: Record<string, unknown> = {};
             try { args = JSON.parse(event.arguments ?? '{}'); } catch { /* ignore */ }
-            logger.info('[TOOL] Function call', { fnName, callId, args });
+            logger.info('[TOOL] Function call', { agentKey: activeAgentKey, fnName, callId, args });
 
             (async () => {
               let result: unknown = { success: true };
               try {
-                if (fnName === 'updateLeadState') {
-                  const { field_name, field_value } = args as { field_name: string; field_value: unknown };
-                  await fetch('http://localhost:3000/bfsi-agentic-suite/api/state', {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ [field_name]: field_value }),
-                  });
-                  result = { success: true, message: `Updated ${field_name} successfully` };
-                  logger.info('[TOOL] updateLeadState done', { field_name, field_value });
-                } else if (fnName === 'getLeadState') {
-                  const res = await fetch('http://localhost:3000/bfsi-agentic-suite/api/state');
-                  result = res.ok ? await res.json() : {};
-                  logger.info('[TOOL] getLeadState done');
-                }
+                const res = await fetch('https://bfsi.searchunify.com/bfsi-agentic-suite/api/tools', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ agentKey: activeAgentKey, toolName: fnName, args }),
+                });
+                result = res.ok ? await res.json() : { success: false, error: `Tool API returned ${res.status}` };
+                logger.info('[TOOL] Done', { fnName, result });
               } catch (err: any) {
                 logger.error('[TOOL] Execution error', { fnName, err: err.message });
                 result = { success: false, error: err.message };
@@ -601,10 +625,20 @@ export async function mediaStreamRoute(fastify: FastifyInstance) {
       logger.info('Cold-connecting to OpenAI', { callSid, agentKey, isLic });
       try {
         const outputModalities = isLic ? ['text'] : ['audio'];
-        const sessionRes = await fetch('http://localhost:3000/bfsi-agentic-suite/api/session', {
+
+        let coldTools: unknown[] | undefined;
+        try {
+          const toolsRes = await fetch(`https://bfsi.searchunify.com/bfsi-agentic-suite/api/tools?agentKey=${agentKey}`);
+          if (toolsRes.ok) {
+            const toolsData = await toolsRes.json();
+            if (Array.isArray(toolsData.tools) && toolsData.tools.length > 0) coldTools = toolsData.tools;
+          }
+        } catch { /* proceed without tools */ }
+
+        const sessionRes = await fetch('https://bfsi.searchunify.com/bfsi-agentic-suite/api/session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ agentKey, output_modalities: outputModalities }),
+          body: JSON.stringify({ agentKey, output_modalities: outputModalities, ...(coldTools ? { tools: coldTools } : {}) }),
         });
         const sessionData = await sessionRes.json();
         if (!sessionData.client_secret?.value) {
@@ -635,6 +669,24 @@ export async function mediaStreamRoute(fastify: FastifyInstance) {
         logger.info('Call ended, lease → post_call', { callSid });
         callSarvam?.destroy();
         callSarvam = null;
+
+        // Mirror what browser mode does on disconnect: create a Zendesk ticket
+        // with whatever state was collected. The tools route deduplicates via
+        // zendesk_ticket_created, so this is a no-op if the agent already called
+        // createZendeskTicket during the conversation.
+        fetch('https://bfsi.searchunify.com/bfsi-agentic-suite/api/tools', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            agentKey: activeAgentKey,
+            toolName: 'createZendeskTicket',
+            args: { lead_category: 'COLD', call_disposition: 'dropped' },
+          }),
+        }).then(res => res.json()).then(result => {
+          logger.info('[CALL END] Zendesk ticket result', { callSid, result });
+        }).catch(err => {
+          logger.error('[CALL END] Zendesk ticket error', { callSid, err: err.message });
+        });
       }
     };
 
@@ -657,6 +709,7 @@ export async function mediaStreamRoute(fastify: FastifyInstance) {
             callSid   = params.callSid ?? null;
             const agentKey = params.agentKey ?? 'aaaInsurance';
             isLic = agentKey === LIC_AGENT_KEY;
+            activeAgentKey = agentKey;
 
             logger.info('Twilio stream started', { callSid, streamSid, agentKey, isLic });
 
@@ -666,7 +719,7 @@ export async function mediaStreamRoute(fastify: FastifyInstance) {
 
             // Try warm path first
             const warm = callSid ? warmStore.get(callSid) : undefined;
-            if (warm) {
+            if (warm && warm.ws) {
               warmStore.delete(callSid!);
               logger.info('[PREWARM] Warm connection claimed', {
                 callSid, wsReady: warm.ready,
@@ -718,6 +771,10 @@ export async function mediaStreamRoute(fastify: FastifyInstance) {
                 };
               }
             } else {
+              if (warm && !warm.ws) {
+                warmStore.delete(callSid!);
+                logger.warn('[PREWARM] Warm entry had null WS — falling back to cold connect', { callSid });
+              }
               connectToOpenAICold(agentKey);
             }
             break;

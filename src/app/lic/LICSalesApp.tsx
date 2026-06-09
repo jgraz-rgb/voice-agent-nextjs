@@ -216,6 +216,7 @@ function LICSalesApp({ welcomeMessage, imageUrl, WorkflowImage, leadInfo }: LICS
     disconnect();
     setSessionStatus('DISCONNECTED');
     setIsPTTUserSpeaking(false);
+    fetch('/bfsi-agentic-suite/api/state', { method: 'DELETE' }).catch(() => {});
   };
 
   // ── Auto-connect on mount ──────────────────────────────────────────────────

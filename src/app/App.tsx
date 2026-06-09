@@ -334,6 +334,7 @@ function App({ welcomeMessage, imageUrl, WorkflowImage }) {
     disconnect();
     setSessionStatus("DISCONNECTED");
     setIsPTTUserSpeaking(false);
+    fetch("/bfsi-agentic-suite/api/state", { method: "DELETE" }).catch(() => {});
   };
 
   const sendSimulatedUserMessage = (text: string) => {

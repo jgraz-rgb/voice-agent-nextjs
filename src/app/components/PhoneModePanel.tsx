@@ -92,6 +92,7 @@ export function PhoneModePanel({ agentKey, leadInfo }: { agentKey: string; leadI
       });
     } catch {}
     await fetch('/bfsi-agentic-suite/api/twilio/release', { method: 'POST' });
+    fetch('/bfsi-agentic-suite/api/state', { method: 'DELETE' }).catch(() => {});
     setCallStatus('ended');
     setCallSid(null);
   };

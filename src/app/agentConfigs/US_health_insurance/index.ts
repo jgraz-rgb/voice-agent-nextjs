@@ -128,7 +128,7 @@ export async function callToolAPI(
 ): Promise<any> {
   try {
     // ✅ Get base URL dynamically based on the service name
-    const baseUrl = "https://feature-mltools.searchunify.com/bfsi-api/";
+    const baseUrl = "https://bfsi.searchunify.com/bfsi-api/";
 
     // ✅ Perform the API call
     const response = await fetch(`${baseUrl}${endpoint}`, {
@@ -166,6 +166,12 @@ const updateStateTool = tool({
     stateManager.updateState({
       [field_name]: field_value,
     });
+
+    fetch('/bfsi-agentic-suite/api/state', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [field_name]: field_value }),
+    }).catch(() => {});
 
     return {
       success: true,
