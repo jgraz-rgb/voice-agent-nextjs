@@ -28,12 +28,19 @@ export interface SarvamStreamSession {
 // so we never send pure CJK/Cyrillic/etc. that causes a 422 and kills the WS.
 const SPEAKABLE_RE = /[ऀ-ॿa-zA-Z0-9]/;
 
+// Tool-call output patterns that must never be spoken aloud.
+// Matches: JSON objects/arrays (complete or partial), key:value pairs, {"key": patterns.
+const TOOL_OUTPUT_RE = /^\s*[\[{]|":\s*[\[{"{]|^\s*"[a-zA-Z_]+"\s*:/;
+
 export function isSpeakable(text: string): boolean {
   const t = text.trim();
-  // Reject JSON objects/arrays (tool call outputs leaked as text)
+  if (!t) return false;
+  // Reject complete JSON objects/arrays
   if ((t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'))) {
     try { JSON.parse(t); return false; } catch { /* not valid JSON, fall through */ }
   }
+  // Reject partial/incomplete JSON and key-value fragments (tool call output leaked as text)
+  if (TOOL_OUTPUT_RE.test(t)) return false;
   return SPEAKABLE_RE.test(t);
 }
 
@@ -250,16 +257,23 @@ export function pcm16ToMulaw(src: Buffer): Buffer {
 }
 
 // ── Text chunking ─────────────────────────────────────────────────────────────
+// First chunk of each response is flushed aggressively to minimize time-to-first-
+// audio (the caller hears the agent start sooner). Subsequent chunks use larger
+// thresholds so playback stays smooth and Sarvam isn't starved by tiny fragments.
+const FIRST_SENTENCE_MIN = 8;
+const FIRST_CLAUSE_MIN   = 12;
+const FIRST_FORCE_FLUSH  = 35;
 const SENTENCE_MIN = 15;
 const CLAUSE_MIN   = 40;
 const FORCE_FLUSH  = 80;
 const SENTENCE_RE  = /[।?!.]/;
-const CLAUSE_RE    = /[,;:.]/;
+const CLAUSE_RE    = /[,;:.\s]/;  // include whitespace so the first chunk can break on a word boundary
 
 export class TextChunker {
   private buf = '';
   private readonly onChunk: (text: string) => void;
   private cancelled = false;
+  private firstChunkEmitted = false;
 
   queue: Promise<void> = Promise.resolve();
 
@@ -284,6 +298,7 @@ export class TextChunker {
   reset() {
     this.cancelled = false;
     this.buf = '';
+    this.firstChunkEmitted = false;
   }
 
   private maybeFlush(force: boolean) {
@@ -292,15 +307,25 @@ export class TextChunker {
     const last = this.buf[this.buf.length - 1];
     const atSentence = SENTENCE_RE.test(last);
     const atClause   = CLAUSE_RE.test(last);
+
+    // The very first chunk of a response uses lower thresholds so the agent
+    // starts speaking with minimal delay; later chunks use the normal sizes.
+    const sentenceMin = this.firstChunkEmitted ? SENTENCE_MIN : FIRST_SENTENCE_MIN;
+    const clauseMin   = this.firstChunkEmitted ? CLAUSE_MIN   : FIRST_CLAUSE_MIN;
+    const forceFlush  = this.firstChunkEmitted ? FORCE_FLUSH  : FIRST_FORCE_FLUSH;
+
     const should =
       force ||
-      (t.length >= SENTENCE_MIN && atSentence) ||
-      (t.length >= CLAUSE_MIN   && atClause)   ||
-      t.length >= FORCE_FLUSH;
+      (t.length >= sentenceMin && atSentence) ||
+      (t.length >= clauseMin   && atClause)   ||
+      t.length >= forceFlush;
 
     if (should) {
       this.buf = '';
-      if (!this.cancelled) this.onChunk(t);
+      if (!this.cancelled) {
+        this.firstChunkEmitted = true;
+        this.onChunk(t);
+      }
     }
   }
 }

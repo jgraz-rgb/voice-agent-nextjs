@@ -6,24 +6,31 @@ import path from 'path';
 
 const DATA_DIR   = path.join(process.cwd(), 'data');
 const STATE_PATH = path.join(DATA_DIR, 'session_state.json');
+// AAA Insurance keeps its own state file so it never collides with the other
+// agents' shared session_state.json (e.g. the zendesk_ticket_created flag).
+const AAA_STATE_PATH = path.join(DATA_DIR, 'session_state_aaa.json');
 
-async function readState(): Promise<Record<string, unknown>> {
+async function readStateAt(statePath: string = STATE_PATH): Promise<Record<string, unknown>> {
   try {
-    return JSON.parse(await fs.readFile(STATE_PATH, 'utf-8'));
+    return JSON.parse(await fs.readFile(statePath, 'utf-8'));
   } catch {
     return {};
   }
 }
 
-async function writeState(data: Record<string, unknown>): Promise<void> {
+async function writeStateAt(data: Record<string, unknown>, statePath: string = STATE_PATH): Promise<void> {
   await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(STATE_PATH, JSON.stringify(data, null, 2), 'utf-8');
+  await fs.writeFile(statePath, JSON.stringify(data, null, 2), 'utf-8');
 }
 
-async function patchState(partial: Record<string, unknown>): Promise<void> {
-  const existing = await readState();
-  await writeState({ ...existing, ...partial });
+async function patchStateAt(partial: Record<string, unknown>, statePath: string = STATE_PATH): Promise<void> {
+  const existing = await readStateAt(statePath);
+  await writeStateAt({ ...existing, ...partial }, statePath);
 }
+
+// Default helpers (shared session_state.json) used by all non-AAA tools.
+const readState  = readStateAt;
+const patchState = patchStateAt;
 
 const TOOL_API_BASE = 'https://bfsi.searchunify.com/bfsi-api';
 async function callToolAPI(endpoint: string, data: unknown): Promise<unknown> {
@@ -280,6 +287,12 @@ const ZIP_DB: Record<string, { city: string; state: string }> = {
 };
 
 async function aaaTool(toolName: string, args: Record<string, unknown>): Promise<unknown> {
+  // AAA uses its own state file so it never collides with the shared
+  // session_state.json. Bind AAA_STATE_PATH here so all the readState/patchState
+  // calls below operate on the AAA-specific file without changing each call site.
+  const readState  = (statePath: string = AAA_STATE_PATH) => readStateAt(statePath);
+  const patchState = (partial: Record<string, unknown>, statePath: string = AAA_STATE_PATH) => patchStateAt(partial, statePath);
+
   const state = await readState();
 
   if (toolName === 'getApplicationState') {

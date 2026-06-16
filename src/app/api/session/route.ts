@@ -18,6 +18,30 @@ function resolveInstructions(body: { instructions?: string; agentKey?: string })
   return DEFAULT_INSTRUCTIONS;
 }
 
+// Extract OpenAI-format tool schemas from the RealtimeAgent config for a given agent key.
+// Each FunctionTool has { type, name, description, parameters, strict } which maps
+// directly to the OpenAI Realtime session tools format.
+function resolveTools(body: { tools?: unknown[]; agentKey?: string }): unknown[] | undefined {
+  if (body.tools && Array.isArray(body.tools) && body.tools.length > 0) return body.tools;
+  if (body.agentKey) {
+    const agents = allAgentSets[body.agentKey];
+    if (agents?.length) {
+      const tools = agents[0]?.tools;
+      if (Array.isArray(tools) && tools.length > 0) {
+        return tools
+          .filter((t: any) => t.type === 'function' && t.name && t.parameters)
+          .map((t: any) => ({
+            type: 'function' as const,
+            name: t.name,
+            description: t.description ?? '',
+            parameters: t.parameters,
+          }));
+      }
+    }
+  }
+  return undefined;
+}
+
 // Stricter VAD for phone calls with background noise (LIC agent).
 // Higher threshold ignores low-energy noise; longer silence_duration_ms
 // avoids cutting off speech mid-sentence; prefix_padding_ms catches fast
@@ -43,7 +67,7 @@ async function buildLeadContext(): Promise<string> {
     const location  = state.property_location ?? '';
     const office    = state.preferred_area_office ?? '';
     if (!firstName && !lastName && !phone && !location && !office) return '';
-    return `\n\n## PRE-COLLECTED LEAD DATA (already available — do NOT ask again)\n- first_name: ${firstName}\n- last_name: ${lastName}\n- phone_number: ${phone}\n- property_location: ${location}\n- preferred_area_office: ${office}\n\nStart by calling getLeadState to load this into your state, then greet the lead by name.`;
+    return `\n\n## PRE-COLLECTED LEAD DATA (already available — do NOT ask again)\n- first_name: ${firstName}\n- last_name: ${lastName}\n- phone_number: ${phone}\n- property_location: ${location}\n- preferred_area_office: ${office}\n\nThis data is ALREADY in your context — do NOT call getLeadState and do NOT say anything about loading or fetching details. Greet the lead by name immediately as your very first spoken words.`;
   } catch {
     return '';
   }
@@ -61,6 +85,7 @@ async function createSession(body: {
   tools?: unknown[];
 }) {
   const model = process.env.NEXT_PUBLIC_REALTIME_MODEL || "gpt-realtime-1.5";
+  const resolvedTools = resolveTools(body);
 
   const response = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
     method: "POST",
@@ -74,7 +99,7 @@ async function createSession(body: {
         model,
         instructions: resolveInstructions(body) + (body.inject_lead_state ? await buildLeadContext() : ''),
         output_modalities: body.output_modalities ?? ["audio"],
-        ...(body.tools ? { tools: body.tools } : {}),
+        ...(resolvedTools ? { tools: resolvedTools } : {}),
         audio: {
           input: {
             transcription: {

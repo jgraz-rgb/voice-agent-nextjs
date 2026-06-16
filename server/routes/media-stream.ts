@@ -90,6 +90,25 @@ function buildGreetingResponse() {
   };
 }
 
+// Build the args for the automatic end-of-call createZendeskTicket, matched to
+// each agent's handler. LIC builds the ticket from collected state and only needs
+// lead_category/call_disposition; AAA/Kotak/Health expect a subject plus a status
+// field and read the remaining details from the shared session state file. Sending
+// the wrong shape yields an undefined subject and a rejected/malformed ticket — the
+// reason non-LIC phone calls weren't producing real Zendesk tickets on drop.
+function buildCallEndTicketArgs(agentKey: string): Record<string, unknown> {
+  switch (agentKey) {
+    case LIC_AGENT_KEY:
+      return { lead_category: 'COLD', call_disposition: 'dropped' };
+    case 'usHealthInsurance':
+      return { subject: 'Phone call dropped — Health Insurance Renewal', renewal_status: 'dropped' };
+    case 'aaaInsurance':
+    case 'kotakInsurance':
+    default:
+      return { subject: `Phone call dropped — ${agentKey}`, application_status: 'dropped' };
+  }
+}
+
 // ── Warm connection store ─────────────────────────────────────────────────────
 
 interface WarmEntry {
@@ -130,12 +149,12 @@ export async function prewarmOpenAI(callSid: string, agentKey: string): Promise<
   try {
     const outputModalities = isLic ? ['text'] : ['audio'];
 
-    // Fetch agent-specific tool schemas so OpenAI knows which tools the agent
-    // can call during the phone call (browser mode gets this automatically from
-    // the Agents SDK; phone mode must pass them explicitly at session creation).
+    // Fetch tool schemas from the local Next.js API (resolves from allAgentSets,
+    // same source as the browser). The external backend lacks schemas for locally-
+    // defined agents (e.g. aaaInsurance), so we always prefer the local source.
     let agentTools: unknown[] | undefined;
     try {
-      const toolsRes = await fetch(`https://bfsi.searchunify.com/bfsi-agentic-suite/api/tools?agentKey=${agentKey}`);
+      const toolsRes = await fetch(`https://bfsi.searchunify.com/bfsi-agentic-suite/api/schemas?agentKey=${agentKey}`);
       if (toolsRes.ok) {
         const toolsData = await toolsRes.json();
         if (Array.isArray(toolsData.tools) && toolsData.tools.length > 0) {
@@ -215,6 +234,8 @@ export async function prewarmOpenAI(callSid: string, agentKey: string): Promise<
       ws.send(JSON.stringify(isLic ? buildGreetingResponse() : { type: 'response.create' }));
     });
 
+    let prewarmIsToolCallItem = false;
+
     ws.on('message', (rawMsg: Buffer | string) => {
       try {
         const event = JSON.parse(rawMsg.toString());
@@ -223,12 +244,19 @@ export async function prewarmOpenAI(callSid: string, agentKey: string): Promise<
           logger.info('[PREWARM] OpenAI event', { callSid, type: event.type });
         }
 
+        if (event.type === 'response.created') {
+          prewarmIsToolCallItem = false;
+        }
+        if (event.type === 'response.output_item.added') {
+          prewarmIsToolCallItem = event.item?.type === 'function_call';
+        }
+
         if (isLic) {
-          // LIC: buffer text → Sarvam TTS → μ-law
-          if (event.type === 'response.output_text.delta' && event.delta) {
+          // LIC: buffer text → Sarvam TTS → μ-law (skip function_call arg deltas)
+          if (!prewarmIsToolCallItem && event.type === 'response.output_text.delta' && event.delta) {
             chunker!.push(event.delta);
           }
-          if (event.type === 'response.output_text.done') {
+          if (!prewarmIsToolCallItem && event.type === 'response.output_text.done') {
             chunker!.flush();
           }
         } else {
@@ -361,7 +389,7 @@ export async function mediaStreamRoute(fastify: FastifyInstance) {
       const markSpeakingFor = (mulawBytes: number) => {
         agentSpeaking = true;
         if (speakingTimer) clearTimeout(speakingTimer);
-        const durationMs = Math.ceil((mulawBytes / 8000) * 1000) + 200;
+        const durationMs = Math.ceil((mulawBytes / 8000) * 1000) + 100;
         speakingTimer = setTimeout(() => { agentSpeaking = false; }, durationMs);
       };
 
@@ -431,6 +459,18 @@ export async function mediaStreamRoute(fastify: FastifyInstance) {
       // skip feeding its argument deltas (JSON) into the Sarvam TTS chunker.
       let isToolCallItem = false;
 
+      // After a tool result we must trigger a follow-up response. If the response
+      // that issued the tool call is still active, OpenAI rejects an immediate
+      // response.create with `conversation_already_has_active_response` and drops
+      // it silently — the call then hangs ("nothing after [TOOL] Done"). We set
+      // this flag, send the response.create as soon as the active response ends.
+      let pendingToolResponse = false;
+      const triggerToolResponse = () => {
+        pendingToolResponse = false;
+        logger.info('[TOOL] Triggering follow-up response', { callSid });
+        sendToOpenAI({ type: 'response.create' });
+      };
+
       ws.on('message', (rawMsg: Buffer | string) => {
         try {
           const event = JSON.parse(rawMsg.toString());
@@ -451,9 +491,16 @@ export async function mediaStreamRoute(fastify: FastifyInstance) {
           }
 
           // Detect function_call output items so their JSON argument deltas are
-          // not sent to Sarvam TTS. Reset when a new text item starts.
+          // not sent to Sarvam TTS. A single response can contain both a
+          // function_call item AND a message item — set the flag per item so a
+          // message item that follows a function_call is still spoken.
           if (event.type === 'response.output_item.added') {
             isToolCallItem = event.item?.type === 'function_call';
+          }
+          // When a text/message item completes, clear the flag so the NEXT item
+          // (or the response.done flush) is not wrongly treated as a tool call.
+          if (event.type === 'response.output_item.done' && event.item?.type !== 'function_call') {
+            isToolCallItem = false;
           }
 
           if (event.type === 'input_audio_buffer.speech_started') {
@@ -495,16 +542,28 @@ export async function mediaStreamRoute(fastify: FastifyInstance) {
               sarvam?.flush();
             }
             responseCancelled = false;
+
+            // A tool result was queued during this response — now that it has
+            // ended, it's safe to ask OpenAI for the follow-up response.
+            if (pendingToolResponse) triggerToolResponse();
           }
 
           // ── LIC: text → Sarvam streaming TTS ───────────────────────────────
           // Skip text deltas that belong to function_call items (JSON args, not speech).
+          // Also skip response.output_text.done whose full text is a JSON tool-call output.
           if (isLic && chunker && !isToolCallItem) {
             if (event.type === 'response.output_text.delta' && event.delta) {
               chunker.push(event.delta);
             }
             if (event.type === 'response.output_text.done') {
-              chunker.flush();
+              // If the entire completed text is a JSON/tool-output blob, cancel rather than flush.
+              const fullText: string = event.text ?? '';
+              if (fullText && !isSpeakable(fullText)) {
+                logger.warn('[Sarvam][LIVE] Dropping tool-output text from TTS', { preview: fullText.slice(0, 80) });
+                chunker.cancel();
+              } else {
+                chunker.flush();
+              }
             }
           }
 
@@ -555,6 +614,8 @@ export async function mediaStreamRoute(fastify: FastifyInstance) {
                 result = { success: false, error: err.message };
               }
 
+              // Queue the tool result (adding a conversation item is always allowed,
+              // even mid-response).
               sendToOpenAI({
                 type: 'conversation.item.create',
                 item: {
@@ -563,7 +624,15 @@ export async function mediaStreamRoute(fastify: FastifyInstance) {
                   output: JSON.stringify(result),
                 },
               });
-              sendToOpenAI({ type: 'response.create' });
+              // Only create the follow-up response once no response is active.
+              // If the tool-call response is still streaming/finishing, defer to
+              // response.done; otherwise fire immediately.
+              if (responseActive) {
+                pendingToolResponse = true;
+                logger.info('[TOOL] Response still active — deferring follow-up', { callSid });
+              } else {
+                triggerToolResponse();
+              }
             })();
           }
 
@@ -602,6 +671,11 @@ export async function mediaStreamRoute(fastify: FastifyInstance) {
             // same instant response.done arrived, so the cancel reached OpenAI too late.
             if (event.error?.code === 'response_cancel_not_active') {
               logger.warn('OpenAI cancel race (benign)', { code: event.error.code });
+            } else if (event.error?.code === 'conversation_already_has_active_response') {
+              // Our follow-up response.create lost the race with an active response.
+              // Re-queue it so the tool result still gets spoken once the active one ends.
+              logger.warn('[TOOL] Follow-up hit active-response race — re-queuing', { callSid });
+              pendingToolResponse = true;
             } else {
               logger.error('OpenAI error event', event.error);
             }
@@ -628,7 +702,7 @@ export async function mediaStreamRoute(fastify: FastifyInstance) {
 
         let coldTools: unknown[] | undefined;
         try {
-          const toolsRes = await fetch(`https://bfsi.searchunify.com/bfsi-agentic-suite/api/tools?agentKey=${agentKey}`);
+          const toolsRes = await fetch(`https://bfsi.searchunify.com/bfsi-agentic-suite/api/schemas?agentKey=${agentKey}`);
           if (toolsRes.ok) {
             const toolsData = await toolsRes.json();
             if (Array.isArray(toolsData.tools) && toolsData.tools.length > 0) coldTools = toolsData.tools;
@@ -674,19 +748,31 @@ export async function mediaStreamRoute(fastify: FastifyInstance) {
         // with whatever state was collected. The tools route deduplicates via
         // zendesk_ticket_created, so this is a no-op if the agent already called
         // createZendeskTicket during the conversation.
-        fetch('https://bfsi.searchunify.com/bfsi-agentic-suite/api/tools', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            agentKey: activeAgentKey,
-            toolName: 'createZendeskTicket',
-            args: { lead_category: 'COLD', call_disposition: 'dropped' },
-          }),
-        }).then(res => res.json()).then(result => {
-          logger.info('[CALL END] Zendesk ticket result', { callSid, result });
-        }).catch(err => {
-          logger.error('[CALL END] Zendesk ticket error', { callSid, err: err.message });
-        });
+        //
+        // Only LIC and AAA fire an automatic end-of-call ticket; Kotak/Health
+        // create tickets only when the agent itself calls createZendeskTicket
+        // mid-conversation. Each handler expects a different args shape, so
+        // buildCallEndTicketArgs returns the correct one per agentKey (LIC uses
+        // lead_category/call_disposition; AAA uses subject + application_status).
+        const AUTO_TICKET_AGENTS = new Set([LIC_AGENT_KEY, 'aaaInsurance']);
+        if (AUTO_TICKET_AGENTS.has(activeAgentKey)) {
+          const ticketArgs = buildCallEndTicketArgs(activeAgentKey);
+          fetch('https://bfsi.searchunify.com/bfsi-agentic-suite/api/tools', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              agentKey: activeAgentKey,
+              toolName: 'createZendeskTicket',
+              args: ticketArgs,
+            }),
+          }).then(res => res.json()).then(result => {
+            logger.info('[CALL END] Zendesk ticket result', { callSid, agentKey: activeAgentKey, result });
+          }).catch(err => {
+            logger.error('[CALL END] Zendesk ticket error', { callSid, err: err.message });
+          });
+        } else {
+          logger.info('[CALL END] Skipping auto Zendesk ticket (non-LIC/AAA agent)', { callSid, agentKey: activeAgentKey });
+        }
       }
     };
 

@@ -102,7 +102,7 @@ function LICSalesApp({ welcomeMessage, imageUrl, WorkflowImage, leadInfo }: LICS
         : undefined;
 
     if (instructions && leadInfo) {
-      const leadContext = `\n\n## PRE-COLLECTED LEAD DATA (already available — do NOT ask again)\n- first_name: ${leadInfo.firstName}\n- last_name: ${leadInfo.lastName}\n- phone_number: ${leadInfo.phoneNumber}\n- property_location: ${leadInfo.propertyLocation}\n- preferred_area_office: ${leadInfo.areaOffice}\n\nStart by calling getLeadState to load this into your state, then greet the lead by name.`;
+      const leadContext = `\n\n## PRE-COLLECTED LEAD DATA (already available — do NOT ask again)\n- first_name: ${leadInfo.firstName}\n- last_name: ${leadInfo.lastName}\n- phone_number: ${leadInfo.phoneNumber}\n- property_location: ${leadInfo.propertyLocation}\n- preferred_area_office: ${leadInfo.areaOffice}\n\nThis data is ALREADY in your context — do NOT call getLeadState and do NOT say anything about loading or fetching details. Greet the lead by name immediately as your very first spoken words.`;
       instructions = instructions + leadContext;
     }
 
